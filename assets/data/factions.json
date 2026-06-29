@@ -1,0 +1,38 @@
+{
+  "_note": "WASP playable factions for the mission.sqm generator faction-picker. side from WFBE_C_UNITS_FACTIONS_*. slotClass = lobby player slot vehicle. addOns = extra PBOs beyond base. HC civ slot uses base_hc_civ universally (in cacharacters2).",
+  "base_addons": [
+    "ca_modules_functions",
+    "ca_highcommand",
+    "warfare2vehicles",
+    "ca_communityconfigurationproject_e",
+    "cacharacters2"
+  ],
+  "base_hc_civ": "Functionary1",
+  "factions": {
+    "CDF": { "side": "WEST", "slotClass": "CDF_Soldier_Officer", "addOns": [] },
+    "US": { "side": "WEST", "slotClass": "US_Soldier_EP1", "addOns": [] },
+    "USMC": { "side": "WEST", "slotClass": "USMC_Soldier_TL", "addOns": [] },
+    "INS": { "side": "EAST", "slotClass": "Ins_Soldier_CO", "addOns": [] },
+    "RU": { "side": "EAST", "slotClass": "RU_Soldier", "addOns": [] },
+    "TKA": {
+      "side": "EAST",
+      "slotClass": "TK_Soldier_EP1",
+      "addOns": ["cacharacters_e"]
+    },
+    "GUE": { "side": "GUER", "slotClass": "GUE_Soldier_CO", "addOns": [] },
+    "PMC": {
+      "side": "GUER",
+      "slotClass": "Soldier_PMC",
+      "addOns": [
+        "cacharacters_pmc",
+        "cawheeled_pmc_armoredsuv",
+        "caair_pmc_ka60"
+      ]
+    },
+    "TKGUE": {
+      "side": "GUER",
+      "slotClass": "TK_GUE_Soldier_EP1",
+      "addOns": ["cacharacters_e"]
+    }
+  }
+}
