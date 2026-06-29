@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sector Planner — WASP Campaign Map</title>
+<meta name="description" content="Strategic sector and town planner for WASP Warfare — view and edit town positions, supply values, and presets on all 7 Arma 2 maps.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gunmetal:#14171B; --steel:#2A2F36; --steel2:#343b44;
+    --olive:#5C6536; --bone:#E7E3D6; --orange:#D9763C; --orange-deep:#B85F2A;
+    --chalk:#F2EFE8; --line:#39414b; --danger:#c0392b;
+    --west:#5D82A3; --east:#A8503F; --guer:#5C6536; --neutral:#7A8490;
+    /* Locations layer colours (cooler/neutral — distinct from WASP orange) */
+    --loc-capital:#A0C4D8; --loc-city:#7AAEC4; --loc-village:#5090A8;
+    --loc-minor:#3a5f72;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;background:var(--gunmetal);color:var(--bone);overflow:hidden}
+  h1,h2,h3{font-family:Oswald,Inter,sans-serif;font-weight:600;letter-spacing:.5px}
+
+  /* ---- Brand bar ---- */
+  .brandbar{height:54px;display:flex;align-items:center;gap:14px;padding:0 16px;
+    background:linear-gradient(90deg,#101317 0%,#171b20 100%);border-bottom:1px solid var(--line);position:relative;z-index:5}
+  .brandbar .mark{width:34px;height:34px;flex:0 0 auto}
+  .brandbar .word{display:flex;flex-direction:column;line-height:1}
+  .brandbar .word .t1{font-family:Oswald,sans-serif;font-weight:600;font-size:19px;letter-spacing:2px;color:var(--bone)}
+  .brandbar .word .t2{font-family:Oswald,sans-serif;font-weight:400;font-size:10px;letter-spacing:6px;color:var(--orange);margin-top:2px}
+  .brandbar .tool{margin-left:8px;padding-left:14px;border-left:1px solid var(--line);font-size:12px;color:#9aa3ad}
+  .brandbar .tool b{color:var(--bone);font-weight:600}
+  .brandbar .spacer{flex:1}
+  .brandbar .chip{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b939c;border:1px solid var(--line);
+    border-radius:10px;padding:3px 9px;background:#0d1014}
+  .brandbar .chip b{color:var(--olive)}
+
+  /* ---- App layout ---- */
+  .app{display:grid;grid-template-columns:270px 1fr 300px;grid-template-rows:1fr auto;height:calc(100% - 54px)}
+  .panel{background:var(--steel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .panel.right{border-right:none;border-left:1px solid var(--line)}
+  .panel header{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--gunmetal);flex:0 0 auto}
+  .panel header h2{font-size:14px;margin:0}
+  .panel header .sub{font-size:11px;color:#9aa3ad;margin-top:3px;font-family:'JetBrains Mono',monospace}
+  .scroll{overflow:auto;padding:12px 14px;flex:1;min-height:0}
+
+  /* ---- Controls panel ---- */
+  label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#9aa3ad;margin:10px 0 4px}
+  label:first-child{margin-top:0}
+
+  /* Map dropdown */
+  .map-select-wrap{position:relative}
+  .map-select-wrap select{
+    width:100%;appearance:none;background:var(--gunmetal);border:1px solid var(--line);
+    border-radius:6px;color:var(--bone);padding:9px 30px 9px 10px;font-size:12px;
+    font-family:inherit;cursor:pointer;outline:none
+  }
+  .map-select-wrap select:hover{border-color:var(--orange)}
+  .map-select-wrap select:focus{border-color:var(--orange)}
+  .map-select-wrap::after{
+    content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    color:var(--orange);pointer-events:none;font-size:14px
+  }
+
+  .toggle-row{display:flex;align-items:center;gap:7px;margin:6px 0;font-size:12px;color:var(--bone)}
+  .toggle-row input[type=checkbox]{accent-color:var(--orange);width:14px;height:14px;cursor:pointer}
+  .toggle-row.indent{padding-left:20px;color:#9aa3ad;font-size:11px}
+
+  .divider{height:1px;background:var(--line);margin:14px 0}
+
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:#9aa3ad;margin:5px 0;font-family:'JetBrains Mono',monospace}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+  .legend-ring{width:10px;height:10px;border-radius:50%;border:1.5px solid;flex:0 0 auto;background:transparent}
+  .legend-diamond{width:8px;height:8px;flex:0 0 auto;transform:rotate(45deg)}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .stat-cell{background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;padding:7px 9px}
+  .stat-cell .val{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--orange);font-weight:500}
+  .stat-cell .lbl{font-size:10px;color:#8b939c;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+  /* ---- Map stage ---- */
+  .stage{position:relative;background:#0b0e12;min-height:0;overflow:hidden;cursor:crosshair}
+  .stage svg{display:block;width:100%;height:100%}
+  #map-svg{width:100%;height:100%;cursor:grab}
+  #map-svg.panning{cursor:grabbing}
+
+  /* ---- SVG element styles ---- */
+  .grid-line{stroke:var(--steel2);stroke-width:1;vector-effect:non-scaling-stroke}
+  .grid-line-major{stroke:#2f3740;stroke-width:1;vector-effect:non-scaling-stroke}
+  .grid-label{fill:#4a5560;font-family:'JetBrains Mono',monospace;font-size:11px}
+  .map-border{fill:none;stroke:var(--line);stroke-width:2;vector-effect:non-scaling-stroke}
+
+  .capture-ring{fill:none;stroke:rgba(217,118,60,0.18);stroke-width:1.5;vector-effect:non-scaling-stroke}
+  .town-marker{cursor:pointer;transition:opacity .15s}
+  .town-marker circle.body{fill:var(--neutral);stroke:var(--bone);stroke-width:1;vector-effect:non-scaling-stroke;opacity:.85}
+  .town-marker:hover circle.body{fill:var(--orange);opacity:1}
+  .town-marker.sel circle.body{fill:var(--orange);stroke:var(--chalk);stroke-width:2}
+  .town-label{fill:var(--bone);font-family:'JetBrains Mono',monospace;font-size:10px;text-anchor:middle;pointer-events:none;opacity:.9}
+
+  .spawn-marker{pointer-events:none}
+  .airport-marker{pointer-events:none}
+
+  /* ---- Location markers (CfgWorlds reference data) ---- */
+  .loc-capital{pointer-events:none}
+  .loc-city{pointer-events:none}
+  .loc-village{pointer-events:none}
+  .loc-minor{pointer-events:none}
+  .loc-label{pointer-events:none}
+
+  /* ---- Zoom/pan overlay controls ---- */
+  .map-overlay{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;z-index:3}
+  .map-overlay button{
+    width:30px;height:30px;border:1px solid var(--line);border-radius:5px;
+    background:rgba(20,23,27,.88);color:var(--bone);font-size:16px;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    font-family:inherit;backdrop-filter:blur(4px)
+  }
+  .map-overlay button:hover{border-color:var(--orange)}
+
+  .coords-badge{position:absolute;bottom:10px;left:10px;background:rgba(20,23,27,.82);
+    border:1px solid var(--line);border-radius:5px;padding:4px 9px;font-family:'JetBrains Mono',monospace;
+    font-size:10px;color:#8b939c;z-index:3;backdrop-filter:blur(3px)}
+
+  .scale-badge{position:absolute;bottom:10px;right:10px;background:rgba(20,23,27,.82);
+    border:1px solid var(--line);border-radius:5px;padding:4px 9px;font-family:'JetBrains Mono',monospace;
+    font-size:10px;color:#8b939c;z-index:3;backdrop-filter:blur(3px)}
+
+  /* ---- Inspector (right panel) ---- */
+  .inspector-empty{font-size:12px;color:#5a6470;padding:8px 0;line-height:1.6}
+  .inspector-name{font-family:Oswald,sans-serif;font-size:18px;letter-spacing:.5px;color:var(--bone);margin-bottom:6px}
+  .inspector-pos{font-family:'JetBrains Mono',monospace;font-size:11px;color:#8b939c;margin-bottom:12px}
+  .inspector-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px}
+  .inspector-row:last-child{border-bottom:none}
+  .inspector-row .key{color:#9aa3ad;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  .inspector-row .val{font-family:'JetBrains Mono',monospace;color:var(--bone)}
+  .type-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+  .type-chip{font-size:10px;border:1px solid #46505b;border-radius:10px;padding:2px 8px;color:#c8d0d8;background:var(--gunmetal)}
+
+  /* ---- Editable inspector fields ---- */
+  .insp-input{
+    width:90px;background:var(--gunmetal);border:1px solid var(--line);border-radius:4px;
+    color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:12px;
+    padding:3px 7px;outline:none;text-align:right
+  }
+  .insp-input:focus{border-color:var(--orange)}
+  .type-checklist{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+  .type-check-row{display:flex;align-items:center;gap:7px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--bone)}
+  .type-check-row input[type=checkbox]{accent-color:var(--orange);width:13px;height:13px;cursor:pointer;flex:0 0 auto}
+
+  /* ---- Edited-state ring ---- */
+  .town-marker.edited circle.body{stroke:var(--orange);stroke-width:3}
+  .town-marker.edited .edit-dot{display:block}
+  .edit-dot{display:none}
+
+  /* ---- Preset panel ---- */
+  .preset-panel{margin-top:10px}
+  .preset-btn{
+    display:flex;align-items:center;justify-content:space-between;
+    width:100%;background:var(--gunmetal);border:1px solid var(--line);
+    border-radius:5px;padding:7px 10px;cursor:pointer;margin-bottom:4px;
+    font-size:12px;color:var(--bone);font-family:Inter,sans-serif;text-align:left
+  }
+  .preset-btn:hover{border-color:var(--orange);color:var(--orange)}
+  .preset-btn.active{border-color:var(--orange);background:#1c1f24;color:var(--orange)}
+  .preset-btn .cnt{font-size:10px;font-family:'JetBrains Mono',monospace;color:#8b939c}
+  .preset-btn.active .cnt{color:var(--orange)}
+  .preset-towns{padding:6px 0 4px 2px}
+  .preset-town-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--bone);
+    padding:2px 0;font-family:'JetBrains Mono',monospace}
+  .preset-town-row input[type=checkbox]{accent-color:var(--orange);cursor:pointer;width:13px;height:13px;flex:0 0 auto}
+
+  /* ---- Reset button ---- */
+  .reset-btn{
+    display:flex;align-items:center;gap:7px;width:100%;
+    background:transparent;border:1px solid #3a3f47;border-radius:5px;
+    padding:7px 10px;cursor:pointer;margin-top:8px;
+    font-size:11px;color:#8b939c;font-family:Inter,sans-serif;
+  }
+  .reset-btn:hover{border-color:var(--danger);color:var(--danger)}
+  .reset-btn .dot{width:8px;height:8px;border-radius:50%;background:var(--danger);flex:0 0 auto;opacity:.7}
+
+  /* ---- Dimmed (excluded from active preset) ---- */
+  .town-marker.preset-dim{opacity:0.22}
+  .town-marker.preset-in{opacity:1}
+
+  /* ---- scrollbar ---- */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:var(--steel2);border-radius:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* ---- Mission I/O panel ---- */
+  .io-panel{border-top:1px solid var(--line);grid-column:3;display:flex;flex-direction:column;min-height:0;max-height:320px;
+    background:var(--steel);border-left:1px solid var(--line)}
+  .io-panel header{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--gunmetal);flex:0 0 auto}
+  .io-panel header h2{font-size:14px;margin:0}
+  .io-panel header .sub{font-size:11px;color:#9aa3ad;margin-top:3px;font-family:'JetBrains Mono',monospace}
+  .io-body{overflow:auto;padding:12px 14px;flex:1;min-height:0}
+
+  .io-dropzone{
+    border:2px dashed var(--line);border-radius:7px;padding:16px 12px;text-align:center;
+    cursor:pointer;font-size:12px;color:#8b939c;transition:border-color .15s;position:relative;margin-bottom:10px
+  }
+  .io-dropzone:hover,.io-dropzone.drag-over{border-color:var(--orange);color:var(--bone)}
+  .io-dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .io-dropzone .icon{font-size:20px;display:block;margin-bottom:4px}
+
+  .io-btn{
+    display:flex;align-items:center;gap:7px;width:100%;
+    background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;
+    padding:8px 12px;cursor:pointer;font-size:12px;color:var(--bone);
+    font-family:Inter,sans-serif;margin-bottom:6px;text-align:left
+  }
+  .io-btn:hover:not(:disabled){border-color:var(--orange);color:var(--orange)}
+  .io-btn:disabled{opacity:.4;cursor:not-allowed}
+  .io-btn .icon{font-size:14px;flex:0 0 auto}
+
+  .io-status{font-size:11px;font-family:'JetBrains Mono',monospace;padding:6px 8px;
+    border-radius:5px;margin-bottom:8px;line-height:1.5}
+  .io-status.ok{background:rgba(92,101,54,.25);color:#b8c480;border:1px solid #5c6536}
+  .io-status.err{background:rgba(192,57,43,.18);color:#e07060;border:1px solid var(--danger)}
+  .io-status.info{background:rgba(42,47,54,.6);color:#9aa3ad;border:1px solid var(--line)}
+
+  .io-textarea{
+    width:100%;min-height:80px;max-height:180px;resize:vertical;
+    background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;
+    color:#b0bbc8;font-family:'JetBrains Mono',monospace;font-size:10px;
+    padding:7px 9px;outline:none;line-height:1.5
+  }
+  .io-textarea:focus{border-color:var(--orange)}
+  .io-change-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad;margin:10px 0 5px;display:block}
+</style>
+</head>
+<body>
+
+<!-- ====== Brand bar ====== -->
+<div class="brandbar">
+  <svg class="mark" viewBox="0 0 96 96" aria-label="Miksuu's Warfare">
+    <g fill="none" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter">
+      <polyline points="20,54 48,30 76,54" stroke="#D9763C"/>
+      <polyline points="20,66 48,42 76,66" stroke="#F2EFE8"/>
+      <polyline points="20,78 48,54 76,78" stroke="#5C6536"/>
+    </g>
+  </svg>
+  <div class="word">
+    <span class="t1">SECTOR PLANNER</span>
+    <span class="t2">WASP CAMPAIGN MAP</span>
+  </div>
+  <div class="tool"><b>Sector &amp; Town Planner</b> · <span id="bar-map-name">Chernarus</span></div>
+  <div class="spacer"></div>
+  <div class="chip">coords: <b>world-space metres</b> · Y-north up</div>
+</div>
+
+<div class="app">
+
+  <!-- ====== LEFT: Controls ====== -->
+  <div class="panel">
+    <header>
+      <h2>Controls</h2>
+      <div class="sub">map · filters · legend</div>
+    </header>
+    <div class="scroll">
+
+      <label>Map</label>
+      <div class="map-select-wrap">
+        <select id="map-select">
+          <!-- Populated by JS once maps.json is loaded -->
+        </select>
+      </div>
+
+      <div class="divider"></div>
+
+      <label>Show layers</label>
+
+      <!-- WASP layer (towns from seed-towns.json) -->
+      <div class="toggle-row" id="wasp-layer-row">
+        <input type="checkbox" id="show-towns" checked> WASP towns
+      </div>
+      <div class="toggle-row indent" id="wasp-rings-row">
+        <input type="checkbox" id="show-rings" checked> Capture rings (600 m)
+      </div>
+      <div class="toggle-row indent" id="wasp-spawns-row">
+        <input type="checkbox" id="show-spawns" checked> Spawn points
+      </div>
+      <div class="toggle-row indent" id="wasp-airports-row">
+        <input type="checkbox" id="show-airports" checked> Airfields
+      </div>
+
+      <!-- Reference locations layer (CfgWorlds) -->
+      <div class="toggle-row"><input type="checkbox" id="show-locs-settlements" checked> Locations: settlements</div>
+      <div class="toggle-row"><input type="checkbox" id="show-locs-minor"> Locations: minor</div>
+
+      <!-- General -->
+      <div class="toggle-row"><input type="checkbox" id="show-grid" checked> Coordinate grid</div>
+      <div class="toggle-row"><input type="checkbox" id="show-labels" checked> Town labels</div>
+
+      <div class="divider"></div>
+
+      <label>Map statistics</label>
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-cell"><div class="val" id="stat-towns">–</div><div class="lbl">WASP Towns</div></div>
+        <div class="stat-cell"><div class="val" id="stat-locs">–</div><div class="lbl">Ref Locs</div></div>
+        <div class="stat-cell"><div class="val" id="stat-spawns">–</div><div class="lbl">Spawns</div></div>
+        <div class="stat-cell"><div class="val" id="stat-size">–</div><div class="lbl">Map km</div></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <label>Legend</label>
+      <!-- WASP towns -->
+      <div class="legend-item"><div class="legend-dot" style="background:var(--neutral);border:1px solid var(--bone)"></div>WASP Town</div>
+      <div class="legend-item"><div class="legend-ring" style="border-color:rgba(217,118,60,.5)"></div>Capture ring (600 m)</div>
+      <!-- Locations reference layer -->
+      <div class="legend-item"><div class="legend-dot" style="background:var(--loc-capital);border:2px solid #d4eaf6"></div>Capital (ref)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--loc-city)"></div>City (ref)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--loc-village);opacity:.8"></div>Village (ref)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--loc-minor);opacity:.7"></div>Minor (ref, hidden)</div>
+      <!-- Spawns / airports -->
+      <div class="legend-item"><div class="legend-dot" style="background:var(--west)"></div>Spawn — WEST</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--east)"></div>Spawn — EAST</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--guer)"></div>Spawn — GUER</div>
+      <div class="legend-item">
+        <svg width="10" height="10" viewBox="0 0 10 10" style="flex:0 0 auto">
+          <path d="M5,1 L9,9 L1,9 Z" fill="none" stroke="var(--orange)" stroke-width="1.5"/>
+        </svg>
+        Airfield
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="font-size:11px;color:#5a6470;line-height:1.6">
+        Scroll to zoom · drag map to pan<br>
+        Drag WASP town to reposition<br>
+        Click a WASP town to inspect &amp; edit<br>
+        Ref locations = CfgWorlds (read-only)
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ====== LEFT-BOTTOM: Preset editor (hidden for non-WASP maps) ====== -->
+  <div class="panel" id="preset-panel-wrap" style="border-top:1px solid var(--line);grid-column:1;display:none;flex-direction:column;max-height:280px">
+    <header>
+      <h2>Size Presets</h2>
+      <div class="sub" id="preset-sub">select a preset to edit membership</div>
+    </header>
+    <div class="scroll" id="preset-scroll">
+      <div id="preset-list" class="preset-panel"></div>
+      <button class="reset-btn" id="btn-reset-seed" title="Restore all original seed-towns.json data">
+        <div class="dot"></div>Reset to seed
+      </button>
+    </div>
+  </div>
+
+  <!-- ====== CENTRE: Map stage ====== -->
+  <div class="stage" id="stage" style="grid-row:1/3">
+    <svg id="map-svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="map-clip">
+          <rect id="map-clip-rect" x="0" y="0" width="0" height="0"/>
+        </clipPath>
+      </defs>
+      <!-- Pan/zoom group — everything lives inside this -->
+      <g id="pz-root">
+        <!-- Grid group -->
+        <g id="g-grid"></g>
+        <!-- Reference locations — settlements (below WASP towns) -->
+        <g id="g-locs-settlements"></g>
+        <!-- Reference locations — minor (optional) -->
+        <g id="g-locs-minor"></g>
+        <!-- Capture rings -->
+        <g id="g-rings"></g>
+        <!-- Airfields -->
+        <g id="g-airports"></g>
+        <!-- Spawns -->
+        <g id="g-spawns"></g>
+        <!-- WASP Town markers (on top) -->
+        <g id="g-towns"></g>
+        <!-- Town labels -->
+        <g id="g-labels"></g>
+        <!-- Location labels (settlements) -->
+        <g id="g-loc-labels"></g>
+        <!-- Map border (topmost) -->
+        <rect id="map-border-rect" class="map-border"/>
+      </g>
+    </svg>
+
+    <div class="map-overlay">
+      <button id="btn-zoom-in" title="Zoom in">+</button>
+      <button id="btn-zoom-out" title="Zoom out">−</button>
+      <button id="btn-zoom-fit" title="Fit map" style="font-size:11px">FIT</button>
+    </div>
+    <div class="coords-badge" id="coords-badge">x: — y: —</div>
+    <div class="scale-badge" id="scale-badge">—</div>
+  </div>
+
+  <!-- ====== RIGHT: Inspector ====== -->
+  <div class="panel right" style="grid-row:1">
+    <header>
+      <h2>Inspector</h2>
+      <div class="sub">click a WASP town to inspect</div>
+    </header>
+    <div class="scroll" id="inspector-body">
+      <div class="inspector-empty">No town selected.<br>Click any WASP town marker on the map to inspect its properties.</div>
+    </div>
+  </div>
+
+  <!-- ====== RIGHT-BOTTOM: Mission I/O ====== -->
+  <div class="io-panel" id="io-panel" style="grid-row:2">
+    <header>
+      <h2>Mission I/O</h2>
+      <div class="sub" id="io-sub">load or export mission.sqm</div>
+    </header>
+    <div class="io-body">
+      <!-- File drop zone -->
+      <div class="io-dropzone" id="io-dropzone">
+        <span class="icon">&#128196;</span>
+        Drop <b>mission.sqm</b> here or click to browse
+        <input type="file" id="io-file-input" accept=".sqm,.txt">
+      </div>
+
+      <!-- Status indicator -->
+      <div class="io-status info" id="io-status">No file loaded — using seed data.</div>
+
+      <!-- Download modified .sqm (only when a file is loaded) -->
+      <button class="io-btn" id="btn-download-sqm" disabled title="Download modified mission.sqm">
+        <span class="icon">&#8659;</span> Download modified mission.sqm
+      </button>
+
+      <!-- Change-list export (always available when edits exist) -->
+      <button class="io-btn" id="btn-export-changes" disabled title="Copy change-list to clipboard">
+        <span class="icon">&#128203;</span> Copy change-list
+      </button>
+
+      <!-- Change-list output textarea -->
+      <span class="io-change-label" id="io-change-label" style="display:none">Change-list (paste into SQM or apply manually)</span>
+      <textarea class="io-textarea" id="io-change-output" style="display:none" readonly></textarea>
+    </div>
+  </div>
+
+</div><!-- /.app -->
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+let mapsData  = null;  // maps.json:   { worldKey: { name, worldName, size, locations } }
+let townsData = null;  // seed-towns.json live copy (mutated by edits)
+let seedData  = null;  // seed-towns.json deep copy (immutable, for Reset)
+
+let activeMap    = 'chernarus';
+let selectedTown = null;
+let selectedTownIdx = -1;
+
+// Active preset name (null = none selected)
+let activePreset = null;
+
+// WASP maps that have seed-towns data
+const WASP_MAPS = new Set(['chernarus', 'takistan']);
+
+// Settlement-class types shown prominently
+const SETTLEMENT_TYPES = new Set([
+  'NameCityCapital', 'NameCity', 'NameVillage'
+]);
+
+// ============================================================
+// COORDINATE SYSTEM
+// World origin = SW corner. X grows east, Y grows north.
+// In SVG space: worldX → svgX (unchanged), worldY → SIZE - worldY (flip).
+// Camera: translate(tx, ty) scale(s).
+// Screen coords: sx = worldX * s + tx; sy = (SIZE - worldY) * s + ty
+// ============================================================
+const svg    = document.getElementById('map-svg');
+const pzRoot = document.getElementById('pz-root');
+
+let cam  = { tx: 0, ty: 0, s: 1 };
+let SIZE = 15360;
+
+function applyTransform() {
+  pzRoot.setAttribute('transform', `translate(${cam.tx},${cam.ty}) scale(${cam.s})`);
+}
+
+function worldToSVGLocal(wx, wy) {
+  // Returns position in pz-root's LOCAL space (before camera transform)
+  return { x: wx, y: SIZE - wy };
+}
+
+function svgToWorld(sx, sy) {
+  const wx = (sx - cam.tx) / cam.s;
+  const wy = SIZE - (sy - cam.ty) / cam.s;
+  return { x: wx, y: wy };
+}
+
+function svgCoords(evt) {
+  const rect = svg.getBoundingClientRect();
+  return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+}
+
+// ============================================================
+// FIT MAP TO STAGE
+// ============================================================
+function fitMap() {
+  const rect = svg.getBoundingClientRect();
+  const W = rect.width;
+  const H = rect.height;
+  if (!W || !H) return;
+  const s = Math.min(W, H) / SIZE * 0.92;
+  const marginX = (W - SIZE * s) / 2;
+  const marginY = (H - SIZE * s) / 2;
+  cam = { tx: marginX, ty: marginY, s };
+  applyTransform();
+  updateScaleBadge();
+}
+
+function updateScaleBadge() {
+  const badge = document.getElementById('scale-badge');
+  const barPx = 1000 * cam.s;
+  badge.textContent = `1 km = ${barPx.toFixed(0)} px`;
+}
+
+// ============================================================
+// GRID RENDERING
+// ============================================================
+function renderGrid() {
+  const g = document.getElementById('g-grid');
+  g.innerHTML = '';
+  if (!document.getElementById('show-grid').checked) return;
+  const step = 1000;
+  const majorEvery = 5;
+  const count = Math.ceil(SIZE / step);
+
+  for (let i = 0; i <= count; i++) {
+    const v = i * step;
+    const isMajor = (i % majorEvery === 0);
+    const cls = isMajor ? 'grid-line-major' : 'grid-line';
+
+    const vl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    vl.setAttribute('class', cls);
+    vl.setAttribute('x1', v); vl.setAttribute('y1', 0);
+    vl.setAttribute('x2', v); vl.setAttribute('y2', SIZE);
+    g.appendChild(vl);
+
+    const hl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    hl.setAttribute('class', cls);
+    hl.setAttribute('x1', 0); hl.setAttribute('y1', SIZE - v);
+    hl.setAttribute('x2', SIZE); hl.setAttribute('y2', SIZE - v);
+    g.appendChild(hl);
+
+    if (isMajor && v > 0) {
+      const tx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      tx.setAttribute('class', 'grid-label');
+      tx.setAttribute('x', v);
+      tx.setAttribute('y', SIZE - 6);
+      tx.setAttribute('text-anchor', 'middle');
+      tx.textContent = `${v}`;
+      g.appendChild(tx);
+
+      if (v < SIZE) {
+        const ty = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        ty.setAttribute('class', 'grid-label');
+        ty.setAttribute('x', 6);
+        ty.setAttribute('y', SIZE - v - 4);
+        ty.setAttribute('text-anchor', 'start');
+        ty.textContent = `${v}`;
+        g.appendChild(ty);
+      }
+    }
+  }
+
+  const border = document.getElementById('map-border-rect');
+  border.setAttribute('x', 0);
+  border.setAttribute('y', 0);
+  border.setAttribute('width', SIZE);
+  border.setAttribute('height', SIZE);
+}
+
+// ============================================================
+// WASP TOWN MARKER SIZE (value-based, sqrt scaling)
+// ============================================================
+function townRadius(value) {
+  const minV = 100, maxV = 1000;
+  const minR = 120, maxR = 460;
+  const t = (Math.sqrt(value) - Math.sqrt(minV)) / (Math.sqrt(maxV) - Math.sqrt(minV));
+  return minR + t * (maxR - minR);
+}
+
+// ============================================================
+// SPAWN ICON (diamond)
+// ============================================================
+function spawnColor(side) {
+  if (!side) return '#7A8490';
+  if (side === 'west') return '#5D82A3';
+  if (side === 'east') return '#A8503F';
+  if (side === 'resistance' || side === 'guer') return '#5C6536';
+  return '#7A8490';
+}
+
+function makeSpawnIcon(wx, wy, side) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'spawn-marker');
+  const svgY = SIZE - wy;
+  const r = 140;
+  const col = spawnColor(side);
+  const pts = `${wx},${svgY - r} ${wx + r},${svgY} ${wx},${svgY + r} ${wx - r},${svgY}`;
+  const diamond = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  diamond.setAttribute('points', pts);
+  diamond.setAttribute('fill', col);
+  diamond.setAttribute('fill-opacity', '0.8');
+  diamond.setAttribute('stroke', col);
+  diamond.setAttribute('stroke-width', '1');
+  diamond.setAttribute('vector-effect', 'non-scaling-stroke');
+  g.appendChild(diamond);
+  return g;
+}
+
+// ============================================================
+// AIRFIELD ICON (triangle outline)
+// ============================================================
+function makeAirportIcon(wx, wy) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'airport-marker');
+  const svgY = SIZE - wy;
+  const r = 200;
+  const pts = `${wx},${svgY - r} ${wx + r},${svgY + r * 0.6} ${wx - r},${svgY + r * 0.6}`;
+  const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  tri.setAttribute('points', pts);
+  tri.setAttribute('fill', 'none');
+  tri.setAttribute('stroke', '#D9763C');
+  tri.setAttribute('stroke-width', '2');
+  tri.setAttribute('vector-effect', 'non-scaling-stroke');
+  g.appendChild(tri);
+  const cross = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  cross.setAttribute('x1', wx); cross.setAttribute('y1', svgY - r * 0.3);
+  cross.setAttribute('x2', wx); cross.setAttribute('y2', svgY + r * 0.5);
+  cross.setAttribute('stroke', '#D9763C');
+  cross.setAttribute('stroke-width', '1.5');
+  cross.setAttribute('vector-effect', 'non-scaling-stroke');
+  g.appendChild(cross);
+  return g;
+}
+
+// ============================================================
+// LOCATION MARKER PROPERTIES by type
+// ============================================================
+function locStyle(type) {
+  switch (type) {
+    case 'NameCityCapital':
+      return { r: 250, fill: 'var(--loc-capital)', stroke: '#d4eaf6', sw: 2, opacity: 0.95 };
+    case 'NameCity':
+      return { r: 170, fill: 'var(--loc-city)', stroke: 'none', sw: 0, opacity: 0.85 };
+    case 'NameVillage':
+      return { r: 100, fill: 'var(--loc-village)', stroke: 'none', sw: 0, opacity: 0.75 };
+    default: // minor: FlatArea, NameLocal, StrongpointArea, etc.
+      return { r: 50, fill: 'var(--loc-minor)', stroke: 'none', sw: 0, opacity: 0.5 };
+  }
+}
+
+function isSettlement(type) {
+  return SETTLEMENT_TYPES.has(type);
+}
+
+// ============================================================
+// RENDER: REFERENCE LOCATIONS
+// ============================================================
+function renderLocations() {
+  const worldData = mapsData ? mapsData[activeMap] : null;
+  const gSettlements = document.getElementById('g-locs-settlements');
+  const gMinor       = document.getElementById('g-locs-minor');
+  const gLocLabels   = document.getElementById('g-loc-labels');
+  gSettlements.innerHTML = '';
+  gMinor.innerHTML = '';
+  gLocLabels.innerHTML = '';
+
+  if (!worldData || !worldData.locations || worldData.locations.length === 0) return;
+
+  const showSettlements = document.getElementById('show-locs-settlements').checked;
+  const showMinor       = document.getElementById('show-locs-minor').checked;
+
+  worldData.locations.forEach(loc => {
+    const settlement = isSettlement(loc.type);
+    if (!showSettlements && settlement) return;
+    if (!showMinor && !settlement) return;
+
+    const [wx, wy] = loc.pos;
+    const svgY = SIZE - wy;
+    const style = locStyle(loc.type);
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', wx);
+    circle.setAttribute('cy', svgY);
+    circle.setAttribute('r', style.r);
+    circle.setAttribute('fill', style.fill);
+    circle.setAttribute('opacity', style.opacity);
+    if (style.stroke !== 'none') {
+      circle.setAttribute('stroke', style.stroke);
+      circle.setAttribute('stroke-width', style.sw);
+      circle.setAttribute('vector-effect', 'non-scaling-stroke');
+    }
+    circle.setAttribute('class', settlement ? (loc.type === 'NameCityCapital' ? 'loc-capital' : 'loc-city') : 'loc-minor');
+
+    if (settlement) {
+      gSettlements.appendChild(circle);
+    } else {
+      gMinor.appendChild(circle);
+    }
+
+    // Labels for named settlements only (skip empty-name entries)
+    if (settlement && showSettlements && loc.name) {
+      const fontSize = loc.type === 'NameCityCapital' ? 220 : loc.type === 'NameCity' ? 180 : 140;
+      const yOff     = loc.type === 'NameCityCapital' ? -300 : loc.type === 'NameCity' ? -220 : -150;
+
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('class', 'loc-label');
+      text.setAttribute('x', wx);
+      text.setAttribute('y', svgY + yOff);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-size', fontSize);
+      text.setAttribute('font-family', "'JetBrains Mono', monospace");
+      text.setAttribute('fill', style.fill);
+      text.setAttribute('opacity', '0.85');
+      text.textContent = loc.name;
+      gLocLabels.appendChild(text);
+    }
+  });
+}
+
+// ============================================================
+// RENDER: WASP LAYERS (towns/rings/spawns/airports)
+// ============================================================
+function getWaspData() {
+  if (!WASP_MAPS.has(activeMap) || !townsData) return null;
+  return townsData[activeMap] || null;
+}
+
+function renderRings() {
+  const g = document.getElementById('g-rings');
+  g.innerHTML = '';
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-rings').checked) return;
+  const RING_R = 600;
+  data.towns.forEach(t => {
+    const [wx, wy] = t.pos;
+    const svgY = SIZE - wy;
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('class', 'capture-ring');
+    circle.setAttribute('cx', wx);
+    circle.setAttribute('cy', svgY);
+    circle.setAttribute('r', RING_R);
+    g.appendChild(circle);
+  });
+}
+
+function renderAirports() {
+  const g = document.getElementById('g-airports');
+  g.innerHTML = '';
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-airports').checked) return;
+  data.airports.forEach(a => {
+    const [wx, wy] = a.pos;
+    g.appendChild(makeAirportIcon(wx, wy));
+  });
+}
+
+function renderSpawns() {
+  const g = document.getElementById('g-spawns');
+  g.innerHTML = '';
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-spawns').checked) return;
+  data.spawns.forEach(s => {
+    const [wx, wy] = s.pos;
+    g.appendChild(makeSpawnIcon(wx, wy, s.side));
+  });
+}
+
+// ============================================================
+// DRAG STATE
+// ============================================================
+let dragState = null; // { town, idx, grpEl, startSVG:{x,y}, startPos:[wx,wy], moved:bool }
+const DRAG_THRESHOLD = 5; // pixels before it's considered a drag
+
+function renderTowns() {
+  const g = document.getElementById('g-towns');
+  g.innerHTML = '';
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-towns').checked) return;
+
+  // Build a set of CamelCase names for the active preset
+  let presetSet = null;
+  if (activePreset && data.presets && data.presets[activePreset]) {
+    presetSet = new Set(data.presets[activePreset]);
+  }
+
+  data.towns.forEach((t, idx) => {
+    const [wx, wy] = t.pos;
+    const svgY = SIZE - wy;
+    const r = townRadius(t.value);
+
+    const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    let cls = 'town-marker';
+    if (t._edited) cls += ' edited';
+    if (presetSet !== null) {
+      // Dim towns that are EXCLUDED (i.e. in the "removed" list = they won't play)
+      const camel = toCamel(t.name);
+      cls += presetSet.has(camel) ? ' preset-dim' : ' preset-in';
+    }
+    grp.setAttribute('class', cls);
+    grp.setAttribute('data-town', t.name);
+    grp.setAttribute('data-idx', idx);
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('class', 'body');
+    circle.setAttribute('cx', wx);
+    circle.setAttribute('cy', svgY);
+    circle.setAttribute('r', r);
+    grp.appendChild(circle);
+
+    // Small edit-dot indicator in top-right of marker
+    if (t._edited) {
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('class', 'edit-dot');
+      dot.setAttribute('cx', wx + r * 0.65);
+      dot.setAttribute('cy', svgY - r * 0.65);
+      dot.setAttribute('r', r * 0.22);
+      dot.setAttribute('fill', 'var(--orange)');
+      dot.setAttribute('stroke', 'var(--gunmetal)');
+      dot.setAttribute('stroke-width', '1.5');
+      dot.setAttribute('vector-effect', 'non-scaling-stroke');
+      grp.appendChild(dot);
+    }
+
+    // Drag: mousedown on group starts potential drag
+    grp.addEventListener('mousedown', (evt) => {
+      if (evt.button !== 0) return;
+      evt.stopPropagation(); // prevent pan
+      const sc = svgCoords(evt);
+      dragState = {
+        town: t, idx,
+        grpEl: grp,
+        startSVG: { x: sc.x, y: sc.y },
+        startPos: [t.pos[0], t.pos[1]],
+        moved: false
+      };
+      svg.classList.add('panning'); // grab cursor
+    });
+
+    // Click (if no drag happened) is handled by mouseup global
+    g.appendChild(grp);
+  });
+}
+
+function renderLabels() {
+  const g = document.getElementById('g-labels');
+  g.innerHTML = '';
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-labels').checked) return;
+
+  data.towns.forEach(t => {
+    const [wx, wy] = t.pos;
+    const svgY = SIZE - wy;
+    const r = townRadius(t.value);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('class', 'town-label');
+    text.setAttribute('x', wx);
+    text.setAttribute('y', svgY - r - 60);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-size', '260');
+    text.setAttribute('fill', 'var(--bone)');
+    text.setAttribute('opacity', '0.85');
+    text.setAttribute('font-family', "'JetBrains Mono', monospace");
+    text.textContent = t.name;
+    g.appendChild(text);
+  });
+}
+
+// ============================================================
+// WASP LAYER VISIBILITY TOGGLE (show/hide controls for non-WASP maps)
+// ============================================================
+function updateWaspControlVisibility() {
+  const hasWasp = WASP_MAPS.has(activeMap);
+  ['wasp-layer-row', 'wasp-rings-row', 'wasp-spawns-row', 'wasp-airports-row'].forEach(id => {
+    document.getElementById(id).style.opacity = hasWasp ? '1' : '0.35';
+  });
+}
+
+// ============================================================
+// RENDER ALL LAYERS
+// ============================================================
+function renderAll() {
+  renderGrid();
+  renderLocations();
+  renderRings();
+  renderAirports();
+  renderSpawns();
+  renderTowns();
+  renderLabels();
+}
+
+// ============================================================
+// PRESET PANEL
+// ============================================================
+function renderPresetPanel() {
+  const wrap = document.getElementById('preset-panel-wrap');
+  const listEl = document.getElementById('preset-list');
+  const sub = document.getElementById('preset-sub');
+  listEl.innerHTML = '';
+
+  const data = getWaspData();
+  if (!data || !data.presets) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'flex';
+  const presets = data.presets;
+  const presetNames = Object.keys(presets);
+
+  presetNames.forEach(presetName => {
+    const members = presets[presetName]; // array of CamelCase names (removed towns)
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn' + (activePreset === presetName ? ' active' : '');
+    btn.innerHTML = `<span>${presetName}</span><span class="cnt">${members.length} removed</span>`;
+    btn.addEventListener('click', () => {
+      if (activePreset === presetName) {
+        activePreset = null;
+      } else {
+        activePreset = presetName;
+      }
+      renderPresetPanel();
+      renderTowns(); // update dim/highlight
+    });
+    listEl.appendChild(btn);
+
+    // If this is the active preset, show the town membership list
+    if (activePreset === presetName) {
+      sub.textContent = `${presetName}: ${members.length} towns removed (greyed = removed)`;
+      const townsDiv = document.createElement('div');
+      townsDiv.className = 'preset-towns';
+
+      // List ALL towns for this map, with checkbox = "is in removed list"
+      const waspData = getWaspData();
+      if (waspData) {
+        waspData.towns.forEach(t => {
+          const camel = toCamel(t.name);
+          const isRemoved = members.includes(camel);
+          const row = document.createElement('label');
+          row.className = 'preset-town-row';
+          row.innerHTML = `<input type="checkbox" ${isRemoved ? 'checked' : ''}> ${t.name}`;
+          const cb = row.querySelector('input');
+          cb.addEventListener('change', () => {
+            if (cb.checked) {
+              // Add to removed list (if not already present)
+              if (!members.includes(camel)) members.push(camel);
+            } else {
+              // Remove from removed list
+              const i = members.indexOf(camel);
+              if (i !== -1) members.splice(i, 1);
+            }
+            // Update count badge
+            btn.querySelector('.cnt').textContent = `${members.length} removed`;
+            sub.textContent = `${presetName}: ${members.length} towns removed (greyed = removed)`;
+            markWaspDataEdited();
+            renderTowns();
+          });
+          townsDiv.appendChild(row);
+        });
+      }
+      listEl.appendChild(townsDiv);
+    }
+  });
+
+  if (!activePreset) {
+    sub.textContent = 'select a preset to edit membership';
+  }
+}
+
+// Mark the map's towns-data as having preset edits (for Task 4 tracking)
+function markWaspDataEdited() {
+  const data = getWaspData();
+  if (data) data._presetsEdited = true;
+  if (typeof updateIoButtons === 'function') updateIoButtons();
+}
+
+// ============================================================
+// RESET TO SEED
+// ============================================================
+function resetToSeed() {
+  if (!seedData) return;
+  // Deep-restore townsData from seedData
+  townsData = JSON.parse(JSON.stringify(seedData));
+  activePreset = null;
+  selectedTown = null;
+  selectedTownIdx = -1;
+  // Reset inspector
+  document.getElementById('inspector-body').innerHTML =
+    '<div class="inspector-empty">No town selected.<br>Click any WASP town marker on the map to inspect its properties.</div>';
+  renderPresetPanel();
+  renderAll();
+}
+
+// ============================================================
+// SWITCH MAP
+// ============================================================
+function switchMap(mapKey) {
+  if (!mapsData || !mapsData[mapKey]) return;
+  activeMap = mapKey;
+  SIZE = mapsData[mapKey].size;
+
+  // Update brand bar
+  document.getElementById('bar-map-name').textContent = mapsData[mapKey].name;
+
+  // Update stats
+  const waspData = getWaspData();
+  document.getElementById('stat-towns').textContent = waspData ? waspData.towns.length : '–';
+  document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '–';
+  document.getElementById('stat-locs').textContent   = mapsData[mapKey].locations.length;
+  document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
+
+  // Clear inspector
+  selectedTown = null;
+  selectedTownIdx = -1;
+  activePreset = null;
+  document.getElementById('inspector-body').innerHTML =
+    '<div class="inspector-empty">No town selected.<br>Click any WASP town marker on the map to inspect its properties.</div>';
+
+  // Clip rect
+  document.getElementById('map-clip-rect').setAttribute('width', SIZE);
+  document.getElementById('map-clip-rect').setAttribute('height', SIZE);
+
+  updateWaspControlVisibility();
+  fitMap();
+  renderAll();
+  renderPresetPanel();
+}
+
+// ============================================================
+// KNOWN TOWN TYPES (derived from seed data — all types seen in either map)
+// ============================================================
+const ALL_TOWN_TYPES = [
+  'TinyTown1',
+  'SmallTown1', 'SmallTown2',
+  'MediumTown1', 'MediumTown2',
+  'LargeTown1', 'LargeTown2',
+  'HugeTown1', 'HugeTown2'
+];
+
+// ============================================================
+// CAMELCASE helper (for preset name matching)
+// Strips spaces: "Novy Sobor" → "NovySobor", "Stary Sobor" → "StarySobor"
+// ============================================================
+function toCamel(name) {
+  return name.replace(/\s+/g, '');
+}
+
+// ============================================================
+// INSPECTOR
+// ============================================================
+function selectTown(t, idx, grpEl) {
+  document.querySelectorAll('.town-marker.sel').forEach(el => el.classList.remove('sel'));
+  selectedTown = t;
+  selectedTownIdx = idx;
+  grpEl.classList.add('sel');
+  renderInspector(t, idx);
+}
+
+function markEdited(t) {
+  t._edited = true;
+  if (typeof updateIoButtons === 'function') updateIoButtons();
+}
+
+function renderInspector(t, idx) {
+  const body = document.getElementById('inspector-body');
+  const editedBadge = t._edited
+    ? `<span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--orange);margin-left:8px;border:1px solid var(--orange);border-radius:8px;padding:1px 7px">edited</span>`
+    : '';
+
+  // Type checklist HTML
+  const typeSet = new Set(t.type || []);
+  const typeCheckHtml = ALL_TOWN_TYPES.map(tp => {
+    const checked = typeSet.has(tp) ? 'checked' : '';
+    return `<label class="type-check-row"><input type="checkbox" data-type="${tp}" ${checked}> ${tp}</label>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="inspector-name">${t.name}${editedBadge}</div>
+    <div class="inspector-pos" id="insp-pos">pos: [${t.pos[0].toFixed(1)}, ${t.pos[1].toFixed(1)}]</div>
+    <div class="inspector-row">
+      <span class="key">Start SV</span>
+      <input class="insp-input" id="insp-startSV" type="number" min="0" max="9999" value="${t.startSV}">
+    </div>
+    <div class="inspector-row">
+      <span class="key">Max SV</span>
+      <input class="insp-input" id="insp-maxSV" type="number" min="0" max="9999" value="${t.maxSV}">
+    </div>
+    <div class="inspector-row">
+      <span class="key">Value</span>
+      <input class="insp-input" id="insp-value" type="number" min="0" max="99999" value="${t.value}">
+    </div>
+    <div class="inspector-row"><span class="key">Dubbing</span><span class="val">${t.dubbing || '–'}</span></div>
+    <div style="margin-top:12px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad;">Type</div>
+    <div class="type-checklist" style="margin-top:6px">${typeCheckHtml}</div>
+  `;
+
+  // Wire up inputs
+  document.getElementById('insp-startSV').addEventListener('change', (e) => {
+    const v = parseInt(e.target.value, 10);
+    if (!isNaN(v)) { t.startSV = v; markEdited(t); refreshTownOnMap(t, idx); }
+  });
+  document.getElementById('insp-maxSV').addEventListener('change', (e) => {
+    const v = parseInt(e.target.value, 10);
+    if (!isNaN(v)) { t.maxSV = v; markEdited(t); refreshTownOnMap(t, idx); }
+  });
+  document.getElementById('insp-value').addEventListener('change', (e) => {
+    const v = parseInt(e.target.value, 10);
+    if (!isNaN(v)) { t.value = v; markEdited(t); refreshTownOnMap(t, idx); }
+  });
+  // Type checkboxes
+  body.querySelectorAll('.type-check-row input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const selected = [...body.querySelectorAll('.type-check-row input[type=checkbox]:checked')]
+        .map(el => el.getAttribute('data-type'));
+      t.type = selected;
+      markEdited(t);
+      refreshTownOnMap(t, idx);
+    });
+  });
+}
+
+// Refresh just the affected town marker + label + ring without full re-render
+function refreshTownOnMap(t, idx) {
+  // Re-render the towns group fully (fast enough at ~40 towns)
+  renderTowns();
+  renderLabels();
+  renderRings();
+  // Re-select
+  const grps = document.querySelectorAll('.town-marker');
+  grps.forEach(grp => {
+    if (parseInt(grp.getAttribute('data-idx')) === idx) {
+      grp.classList.add('sel');
+    }
+  });
+  // Update pos display in inspector
+  const posEl = document.getElementById('insp-pos');
+  if (posEl) posEl.textContent = `pos: [${t.pos[0].toFixed(1)}, ${t.pos[1].toFixed(1)}]`;
+}
+
+// ============================================================
+// PAN / ZOOM
+// ============================================================
+let isPanning = false;
+let panStart  = { x: 0, y: 0 };
+let camStart  = { tx: 0, ty: 0 };
+
+svg.addEventListener('mousedown', evt => {
+  if (evt.button !== 0) return;
+  // If a town drag is already started (mousedown on town group), don't start pan
+  if (dragState) return;
+  isPanning = true;
+  panStart = { x: evt.clientX, y: evt.clientY };
+  camStart = { tx: cam.tx, ty: cam.ty };
+  svg.classList.add('panning');
+});
+
+window.addEventListener('mousemove', evt => {
+  const sc = svgCoords(evt);
+
+  // Handle active town drag
+  if (dragState) {
+    const dx = sc.x - dragState.startSVG.x;
+    const dy = sc.y - dragState.startSVG.y;
+    const pixelDist = Math.sqrt(dx * dx + dy * dy);
+    if (pixelDist > DRAG_THRESHOLD) {
+      dragState.moved = true;
+    }
+    if (dragState.moved) {
+      // Inverse: SVG delta → world delta (Y flip: a downward SVG motion = negative world Y)
+      const worldDX = dx / cam.s;
+      const worldDY = -dy / cam.s; // flip
+      const t = dragState.town;
+      t.pos[0] = dragState.startPos[0] + worldDX;
+      t.pos[1] = dragState.startPos[1] + worldDY;
+      markEdited(t);
+      // Show live coords in badge
+      const cb = document.getElementById('coords-badge');
+      cb.textContent = `x: ${t.pos[0].toFixed(0)}  y: ${t.pos[1].toFixed(0)}  (dragging)`;
+      // Fast: just update the SVG elements directly for smoothness
+      updateDraggedTownPosition(t, dragState.idx);
+    }
+    return;
+  }
+
+  if (!isPanning) {
+    const w = svgToWorld(sc.x, sc.y);
+    const cb = document.getElementById('coords-badge');
+    if (w.x >= 0 && w.x <= SIZE && w.y >= 0 && w.y <= SIZE) {
+      cb.textContent = `x: ${w.x.toFixed(0)}  y: ${w.y.toFixed(0)}`;
+    } else {
+      cb.textContent = 'x: —  y: —';
+    }
+    return;
+  }
+  const dx = evt.clientX - panStart.x;
+  const dy = evt.clientY - panStart.y;
+  cam.tx = camStart.tx + dx;
+  cam.ty = camStart.ty + dy;
+  applyTransform();
+});
+
+window.addEventListener('mouseup', (evt) => {
+  // Finish drag
+  if (dragState) {
+    const ds = dragState;
+    dragState = null;
+    svg.classList.remove('panning');
+    if (ds.moved) {
+      // Full re-render to update rings/labels, keep selection
+      renderTowns();
+      renderLabels();
+      renderRings();
+      // Re-select
+      document.querySelectorAll('.town-marker').forEach(grp => {
+        if (parseInt(grp.getAttribute('data-idx')) === ds.idx) {
+          grp.classList.add('sel');
+          selectedTown = ds.town;
+          selectedTownIdx = ds.idx;
+        }
+      });
+      // Update inspector pos
+      const posEl = document.getElementById('insp-pos');
+      if (posEl) posEl.textContent = `pos: [${ds.town.pos[0].toFixed(1)}, ${ds.town.pos[1].toFixed(1)}]`;
+      // Update edited badge in inspector
+      if (selectedTown === ds.town) {
+        const nameEl = document.querySelector('#inspector-body .inspector-name');
+        if (nameEl && !nameEl.querySelector('.edited-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'edited-badge';
+          badge.style.cssText = "font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--orange);margin-left:8px;border:1px solid var(--orange);border-radius:8px;padding:1px 7px";
+          badge.textContent = 'edited';
+          nameEl.appendChild(badge);
+        }
+      }
+    } else {
+      // It was a click (no drag) — open inspector
+      selectTown(ds.town, ds.idx, ds.grpEl);
+    }
+    return;
+  }
+  isPanning = false;
+  svg.classList.remove('panning');
+});
+
+// Live-update town, ring, and label positions during drag without full re-render
+function updateDraggedTownPosition(t, idx) {
+  const [wx, wy] = t.pos;
+  const svgY = SIZE - wy;
+  const r = townRadius(t.value);
+
+  // Update town group elements
+  const grp = document.querySelector(`.town-marker[data-idx="${idx}"]`);
+  if (grp) {
+    const circle = grp.querySelector('circle.body');
+    if (circle) { circle.setAttribute('cx', wx); circle.setAttribute('cy', svgY); }
+    const dot = grp.querySelector('.edit-dot');
+    if (dot) { dot.setAttribute('cx', wx + r * 0.65); dot.setAttribute('cy', svgY - r * 0.65); }
+  }
+
+  // Update capture ring
+  const rings = document.getElementById('g-rings').children;
+  if (rings[idx]) {
+    rings[idx].setAttribute('cx', wx);
+    rings[idx].setAttribute('cy', svgY);
+  }
+
+  // Update label
+  const labels = document.getElementById('g-labels').children;
+  if (labels[idx]) {
+    labels[idx].setAttribute('x', wx);
+    labels[idx].setAttribute('y', svgY - r - 60);
+  }
+}
+
+svg.addEventListener('wheel', evt => {
+  evt.preventDefault();
+  const factor = evt.deltaY < 0 ? 1.12 : 1 / 1.12;
+  const sc = svgCoords(evt);
+  cam.tx = sc.x - (sc.x - cam.tx) * factor;
+  cam.ty = sc.y - (sc.y - cam.ty) * factor;
+  cam.s *= factor;
+  cam.s = Math.max(0.02, Math.min(cam.s, 20));
+  applyTransform();
+  updateScaleBadge();
+}, { passive: false });
+
+document.getElementById('btn-zoom-in').addEventListener('click', () => {
+  const rect = svg.getBoundingClientRect();
+  const cx = rect.width / 2, cy = rect.height / 2;
+  const f = 1.4;
+  cam.tx = cx - (cx - cam.tx) * f;
+  cam.ty = cy - (cy - cam.ty) * f;
+  cam.s *= f;
+  applyTransform(); updateScaleBadge();
+});
+
+document.getElementById('btn-zoom-out').addEventListener('click', () => {
+  const rect = svg.getBoundingClientRect();
+  const cx = rect.width / 2, cy = rect.height / 2;
+  const f = 1 / 1.4;
+  cam.tx = cx - (cx - cam.tx) * f;
+  cam.ty = cy - (cy - cam.ty) * f;
+  cam.s *= f;
+  applyTransform(); updateScaleBadge();
+});
+
+document.getElementById('btn-zoom-fit').addEventListener('click', fitMap);
+
+// ============================================================
+// MAP DROPDOWN
+// ============================================================
+function populateMapDropdown() {
+  const sel = document.getElementById('map-select');
+  sel.innerHTML = '';
+
+  // Desired display order
+  const ORDER = [
+    'chernarus', 'takistan', 'zargabad', 'utes',
+    'shapur_baf', 'provinggrounds_pmc', 'desert_e'
+  ];
+
+  ORDER.forEach(key => {
+    if (!mapsData[key]) return;
+    const d = mapsData[key];
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = `${d.name} — ${(d.size / 1000).toFixed(0)} km`;
+    if (key === activeMap) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+document.getElementById('map-select').addEventListener('change', evt => {
+  switchMap(evt.target.value);
+});
+
+// ============================================================
+// LAYER TOGGLE BINDINGS
+// ============================================================
+['show-towns', 'show-rings', 'show-spawns', 'show-airports', 'show-labels'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (!mapsData) return;
+    renderRings();
+    renderAirports();
+    renderSpawns();
+    renderTowns();
+    renderLabels();
+  });
+});
+
+document.getElementById('show-grid').addEventListener('change', () => {
+  if (!mapsData) return;
+  renderGrid();
+});
+
+document.getElementById('show-locs-settlements').addEventListener('change', () => {
+  if (!mapsData) return;
+  renderLocations();
+});
+
+document.getElementById('show-locs-minor').addEventListener('change', () => {
+  if (!mapsData) return;
+  renderLocations();
+});
+
+// ============================================================
+// INIT — load both data files, then render
+// ============================================================
+async function init() {
+  try {
+    // Load both files in parallel; seed-towns is optional (may fail on non-WASP setup)
+    const [mapsResp, townsResp] = await Promise.allSettled([
+      fetch('assets/data/maps.json'),
+      fetch('assets/data/seed-towns.json'),
+    ]);
+
+    if (mapsResp.status !== 'fulfilled' || !mapsResp.value.ok) {
+      throw new Error('Failed to load maps.json');
+    }
+    mapsData = await mapsResp.value.json();
+
+    if (townsResp.status === 'fulfilled' && townsResp.value.ok) {
+      const rawTowns = await townsResp.value.json();
+      seedData  = JSON.parse(JSON.stringify(rawTowns)); // immutable deep copy
+      townsData = JSON.parse(JSON.stringify(rawTowns)); // live mutable copy
+    } else {
+      console.warn('seed-towns.json not available — WASP town layer disabled');
+      townsData = null;
+      seedData  = null;
+    }
+
+    activeMap = 'chernarus';
+    SIZE = mapsData.chernarus.size;
+
+    populateMapDropdown();
+    updateWaspControlVisibility();
+
+    // Wire reset button
+    document.getElementById('btn-reset-seed').addEventListener('click', () => {
+      if (confirm('Reset all edits for all maps back to seed data?')) {
+        resetToSeed();
+      }
+    });
+
+    requestAnimationFrame(() => {
+      fitMap();
+      // Update initial stats
+      const waspData = getWaspData();
+      document.getElementById('stat-towns').textContent = waspData ? waspData.towns.length : '–';
+      document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '–';
+      document.getElementById('stat-locs').textContent   = mapsData.chernarus.locations.length;
+      document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
+      renderAll();
+      renderPresetPanel();
+    });
+  } catch (err) {
+    console.error('Init failed:', err);
+  }
+}
+
+// Re-fit on resize
+const ro = new ResizeObserver(() => {
+  if (!mapsData) return;
+  fitMap();
+});
+ro.observe(document.getElementById('stage'));
+
+// ============================================================
+// TASK 4: MISSION I/O
+// ============================================================
+
+// ---- State ----
+// loadedSqm: the raw pasted text (retained verbatim for in-place editing)
+// loadedSqmMap: which map it belongs to ('chernarus'/'takistan')
+// loadedSqmIndex: Map<townName, {posStart,posEnd,initStart,initEnd}> — byte spans
+// loadedSqmOriginals: deep copy of towns/presets as parsed from the pasted file (for diff)
+// loadedSqmWfLogicInitSpan: {start,end} of the entire init="..." string (raw, doubled) for WF_Logic
+let loadedSqm           = null;
+let loadedSqmMap        = null;
+let loadedSqmIndex      = null; // Map<name, {posStart,posEnd,initStart,initEnd}>
+let loadedSqmOriginals  = null; // deep copy at load time
+let loadedSqmWfLogicInitSpan = null; // {start, end} in loadedSqm
+
+// ============================================================
+// SQM PARSER (JS port of tools/extract_towns.py)
+// ============================================================
+
+/** Find matching closing brace starting at braceIdx (where text[braceIdx] === '{') */
+function sqmFindBlock(text, braceIdx) {
+  let depth = 0;
+  for (let i = braceIdx; i < text.length; i++) {
+    if (text[i] === '{') {
+      depth++;
+      if (depth === 1) { /* body_start = i+1 */ }
+    } else if (text[i] === '}') {
+      depth--;
+      if (depth === 0) return { bodyStart: braceIdx + 1, bodyEnd: i };
+    }
+  }
+  return null;
+}
+
+/** Un-double .sqm quote escaping: "" → " */
+function sqmUndouble(s) { return s.replace(/""/g, '"'); }
+
+/** Double-encode for writing back into .sqm: " → "" */
+function sqmDouble(s) { return s.replace(/"/g, '""'); }
+
+/** Parse position[]={x,alt,y} → [x, y] */
+function sqmParsePos(block) {
+  const m = block.match(/position\[\]\s*=\s*\{([^}]+)\}/);
+  if (!m) return null;
+  const parts = m[1].split(',').map(p => parseFloat(p.trim()));
+  if (parts.length < 3) return null;
+  return [parts[0], parts[2]]; // [x, y] — index 0=x, 2=y (index 1 is altitude)
+}
+
+/** Parse the full position[]={...} original text within a block */
+function sqmParsePosRaw(block) {
+  const m = block.match(/position\[\]\s*=\s*\{[^}]+\}/);
+  return m ? m[0] : null;
+}
+
+/**
+ * Parse depot init= args (from un-doubled string).
+ * Returns {name, dubbing, startSV, maxSV, value, type:[...]} or null.
+ */
+function sqmParseInitArgs(initRaw) {
+  // Match: [this,"Name","Dub",startSV,maxSV,value,typeArg]
+  const re = /\[this\s*,\s*"([^"]+)"\s*,\s*"([^"]*)"\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\[.*?\]|"[^"]*")\s*\]/s;
+  const m = initRaw.match(re);
+  if (!m) return null;
+  const [, name, dub, startSV, maxSV, value, typeRaw] = m;
+  let types;
+  if (typeRaw.trim().startsWith('[')) {
+    types = [...typeRaw.matchAll(/"([^"]+)"/g)].map(x => x[1]);
+  } else {
+    const inner = typeRaw.match(/"([^"]+)"/);
+    types = inner ? [inner[1]] : [];
+  }
+  return { name, dubbing: dub, startSV: parseInt(startSV), maxSV: parseInt(maxSV), value: parseInt(value), type: types };
+}
+
+/** Parse Towns_Removed* arrays from WF_Logic init (un-doubled) */
+const PRESET_NAMES = ['XSmall','Small','Medium','Large','BigTowns','CentralLine','SmallTowns'];
+function sqmParsePresets(initRaw) {
+  const presets = {};
+  for (const name of PRESET_NAMES) {
+    const re = new RegExp('Towns_Removed' + name + '[""]*\\s*,\\s*\\[([^\\]]*?)\\]', 's');
+    const m = initRaw.match(re);
+    if (m) {
+      presets[name] = [...m[1].matchAll(/"([^"]+)"/g)].map(x => x[1]);
+    }
+  }
+  return presets;
+}
+
+/**
+ * Main parser: extract towns, spawns, airports, presets from raw sqm text.
+ * Also builds the index: Map<townName, {posStart,posEnd,initStart,initEnd}>
+ * where positions are character offsets into the raw text.
+ * Also returns wfLogicInitSpan: {start,end} of the raw init="..." value span.
+ */
+function sqmParse(text) {
+  const towns   = [];
+  const spawns  = [];
+  const airports = [];
+  let presets   = {};
+  const index   = new Map(); // name → {posStart,posEnd,initStart,initEnd}
+  let wfLogicInitSpan = null;
+
+  // Find all vehicle="<type>" occurrences
+  const vehicleRe = /vehicle\s*=\s*"(LocationLogicDepot|LocationLogicStart|LocationLogicAirport|Logic)"/g;
+  const wfLogicRe = /text\s*=\s*"WF_Logic"/;
+  // Regex to find the raw init="..." (with doubled quotes inside)
+  // We need to capture the entire value including all doubled quotes
+  const initValRe = /init\s*=\s*"((?:[^"\\]|""|\\.)*?)"\s*;/g;
+
+  let m;
+  while ((m = vehicleRe.exec(text)) !== null) {
+    const vtype = m[1];
+    const vmPos = m.index;
+
+    // Walk backwards to find "class Item0 {" before this position
+    const preceding = text.slice(0, vmPos);
+    const item0Re = /class\s+Item0\s*\{/g;
+    let lastItem0 = null;
+    let im;
+    // Reset + find all matches up to vmPos
+    item0Re.lastIndex = 0;
+    while ((im = item0Re.exec(preceding)) !== null) lastItem0 = im;
+    if (!lastItem0) continue;
+
+    // Find the opening brace of Item0
+    const braceIdx = lastItem0.index + lastItem0[0].length - 1; // index of '{'
+    const block = sqmFindBlock(text, braceIdx);
+    if (!block) continue;
+    const { bodyStart, bodyEnd } = block;
+    const item0Body = text.slice(bodyStart, bodyEnd);
+
+    // Sanity: vehicle= must be inside this block
+    if (vmPos < bodyStart || vmPos > bodyEnd) continue;
+
+    const posXY = sqmParsePos(item0Body);
+    if (!posXY) continue;
+
+    if (vtype === 'LocationLogicDepot') {
+      // Find init= in the item0 body
+      // Regex for raw init value with doubled quotes
+      const initRe = /init\s*=\s*"((?:[^"]|"")*)"\s*;/g;
+      let initM = null;
+      // Search for init= inside bodyStart..bodyEnd
+      const bodyText = item0Body;
+      const initMatch = bodyText.match(/\binit\s*=\s*"((?:[^"]|"")*)"\s*;/);
+      if (!initMatch) continue;
+      const initRaw = sqmUndouble(initMatch[1]);
+      const parsed = sqmParseInitArgs(initRaw);
+      if (!parsed) continue;
+      parsed.pos = posXY;
+
+      // Build index spans — locate position[]= and init= in original text
+      // Their offsets are bodyStart + offset-within-body
+      const posMatchInBody = bodyText.match(/position\[\]\s*=\s*\{[^}]+\}/);
+      const initMatchInBody = bodyText.match(/\binit\s*=\s*"(?:[^"]|"")*"\s*;/);
+
+      // Include the trailing semicolon in the position span so replacement is clean
+      const posMatchInBodyFull = bodyText.match(/position\[\]\s*=\s*\{[^}]+\}\s*;/);
+      const posMatchInBodyNoSemi = bodyText.match(/position\[\]\s*=\s*\{[^}]+\}/);
+      const posMatch = posMatchInBodyFull || posMatchInBodyNoSemi;
+
+      if (posMatch && initMatchInBody) {
+        const posBodyOff  = bodyText.indexOf(posMatch[0]);
+        const initBodyOff = bodyText.indexOf(initMatchInBody[0]);
+        index.set(parsed.name, {
+          posStart:  bodyStart + posBodyOff,
+          posEnd:    bodyStart + posBodyOff + posMatch[0].length,
+          initStart: bodyStart + initBodyOff,
+          initEnd:   bodyStart + initBodyOff + initMatchInBody[0].length,
+          // Store originals for no-op detection
+          origPos: posXY.slice(),
+          origStartSV: parsed.startSV,
+          origMaxSV:   parsed.maxSV,
+          origValue:   parsed.value,
+          origType:    parsed.type.slice(),
+          // Whether the span already includes semicolon
+          hasSemicolon: !!posMatchInBodyFull,
+          // Raw strings for byte-identical no-op
+          rawPosStr:  posMatch[0],
+          rawInitStr: initMatchInBody[0],
+        });
+      }
+
+      towns.push(parsed);
+
+    } else if (vtype === 'LocationLogicStart') {
+      spawns.push({ pos: posXY, side: null, spawn_pos: null });
+
+    } else if (vtype === 'LocationLogicAirport') {
+      airports.push({ pos: posXY });
+
+    } else if (vtype === 'Logic') {
+      if (wfLogicRe.test(item0Body)) {
+        const initRe = /\binit\s*=\s*"((?:[^"]|"")*)"\s*;/;
+        const wfInitM = item0Body.match(initRe);
+        if (wfInitM) {
+          const initRaw = sqmUndouble(wfInitM[1]);
+          presets = sqmParsePresets(initRaw);
+          // Find exact span of this init="..." in the full text
+          const wfInitInBody = item0Body.indexOf(wfInitM[0]);
+          if (wfInitInBody !== -1) {
+            wfLogicInitSpan = {
+              start: bodyStart + wfInitInBody,
+              end:   bodyStart + wfInitInBody + wfInitM[0].length,
+            };
+          }
+        }
+      }
+    }
+  }
+
+  return { towns, spawns, airports, presets, index, wfLogicInitSpan };
+}
+
+/** Detect map from sqm text content (look for mission folder name embedded in comments or paths) */
+function detectMapFromSqm(text) {
+  // Heuristic: chernarus towns exist; look for characteristic town names
+  if (/Kamenka|Cherno|Elektrozavodsk/i.test(text)) return 'chernarus';
+  if (/Zargabad|Rasman|Feruz/i.test(text)) return 'takistan';
+  return null;
+}
+
+// ============================================================
+// CANONICAL INIT STRING BUILDER
+// Produces the correct init= line for a depot town, ready to write back.
+// Output: the full `init="...";` assignment (with doubled quotes, as in .sqm)
+// ============================================================
+function buildInitStr(t) {
+  // typeArg: single type → "TinyTown1", multiple → ["A","B"]
+  let typeArg;
+  if (t.type.length === 1) {
+    typeArg = `"${t.type[0]}"`;
+  } else {
+    typeArg = `[${t.type.map(tp => `"${tp}"`).join(',')}]`;
+  }
+  // Un-doubled form: [this,"Name","Dub",sv,maxsv,val,typeArg] execVM "...";...
+  // The dubbing field (t.dubbing or "+")
+  const dub = t.dubbing || '+';
+  const inner = `nullReturn = [this,"${t.name}","${dub}",${t.startSV},${t.maxSV},${t.value},${typeArg}] execVM "Common\\Init\\Init_Town.sqf";this enableSimulation false;`;
+  // Double-encode for .sqm
+  const doubled = sqmDouble(inner);
+  return `init="${doubled}";`;
+}
+
+/** Build position[]={x,alt,y}; string.
+ *  We preserve the original alt value from the raw span when available.
+ *  span: the index entry (may have hasSemicolon flag). */
+function buildPosStr(town, span) {
+  // Extract alt from original raw position string if we have it
+  let alt = 0;
+  const rawPosStr = span ? span.rawPosStr : null;
+  if (rawPosStr) {
+    const m = rawPosStr.match(/position\[\]\s*=\s*\{([^}]+)\}/);
+    if (m) {
+      const parts = m[1].split(',').map(p => parseFloat(p.trim()));
+      if (parts.length >= 2) alt = parts[1];
+    }
+  }
+  // Include semicolon only if the span already included it (so we replace like-for-like)
+  const semi = (span && span.hasSemicolon) ? ';' : '';
+  return `position[]={${town.pos[0]},${alt},${town.pos[1]}}${semi}`;
+}
+
+/** Build the WF_Logic init value (un-doubled) with updated presets. */
+function buildWfLogicInit(originalInitRaw, newPresets) {
+  let result = originalInitRaw;
+  for (const name of PRESET_NAMES) {
+    if (!(name in newPresets)) continue;
+    const towns = newPresets[name];
+    const newArr = towns.map(n => `"${n}"`).join(',');
+    const re = new RegExp('(Towns_Removed' + name + '[""]*\\s*,\\s*\\[)[^\\]]*?(\\])', 's');
+    result = result.replace(re, (_, pre, suf) => pre + newArr + suf);
+  }
+  return result;
+}
+
+// ============================================================
+// PRODUCE MODIFIED SQM TEXT
+// Only touches changed towns and changed presets. Everything else is byte-identical.
+// ============================================================
+function produceSqmOutput() {
+  if (!loadedSqm || !loadedSqmIndex || !loadedSqmOriginals) return null;
+  const data = townsData && townsData[loadedSqmMap];
+  if (!data) return null;
+
+  // Build list of replacement ranges (sorted by start), then apply in reverse
+  const replacements = []; // {start, end, text}
+
+  // --- Town replacements ---
+  for (const t of data.towns) {
+    const span = loadedSqmIndex.get(t.name);
+    if (!span) continue;
+    const orig = loadedSqmOriginals.townsByName.get(t.name);
+    if (!orig) continue;
+
+    const posChanged  = Math.abs(t.pos[0] - orig.pos[0]) > 0.0001 || Math.abs(t.pos[1] - orig.pos[1]) > 0.0001;
+    const attrChanged = t.startSV !== orig.startSV || t.maxSV !== orig.maxSV ||
+                        t.value !== orig.value ||
+                        JSON.stringify(t.type.slice().sort()) !== JSON.stringify(orig.type.slice().sort());
+
+    if (!posChanged && !attrChanged) continue; // unchanged → skip entirely (byte-identical)
+
+    if (posChanged) {
+      replacements.push({
+        start: span.posStart, end: span.posEnd,
+        text: buildPosStr(t, span),
+      });
+    }
+    if (attrChanged) {
+      replacements.push({
+        start: span.initStart, end: span.initEnd,
+        text: buildInitStr(t),
+      });
+    }
+  }
+
+  // --- Preset replacements ---
+  if (loadedSqmWfLogicInitSpan && data._presetsEdited) {
+    const origInitSpan = loadedSqmWfLogicInitSpan;
+    const rawInitFull = loadedSqm.slice(origInitSpan.start, origInitSpan.end);
+    // Extract the inner value (raw, doubled)
+    const innerM = rawInitFull.match(/^init\s*=\s*"((?:[^"]|"")*)"\s*;$/s);
+    if (innerM) {
+      const undoubledInit = sqmUndouble(innerM[1]);
+      const newInit = buildWfLogicInit(undoubledInit, data.presets);
+      const newInitStr = 'init="' + sqmDouble(newInit) + '";';
+      replacements.push({
+        start: origInitSpan.start, end: origInitSpan.end,
+        text: newInitStr,
+      });
+    }
+  }
+
+  if (replacements.length === 0) {
+    // Absolutely no changes — return verbatim
+    return loadedSqm;
+  }
+
+  // Sort by start position descending so we can splice without shifting indices
+  replacements.sort((a, b) => b.start - a.start);
+
+  let out = loadedSqm;
+  for (const r of replacements) {
+    out = out.slice(0, r.start) + r.text + out.slice(r.end);
+  }
+  return out;
+}
+
+// ============================================================
+// CHANGE-LIST EXPORT (seeded mode — no loaded sqm)
+// Outputs new position[]= and init= lines for each edited town.
+// ============================================================
+function buildChangeList() {
+  const data = getWaspData();
+  if (!data) return '';
+  const lines = [];
+
+  for (const t of data.towns) {
+    if (!t._edited) continue;
+    lines.push(`// === ${t.name} ===`);
+    lines.push(buildPosStr(t, { hasSemicolon: true, rawPosStr: null }));
+    lines.push(buildInitStr(t));
+    lines.push('');
+  }
+
+  if (data._presetsEdited && data.presets) {
+    lines.push('// === Preset arrays (WF_Logic init) ===');
+    for (const name of PRESET_NAMES) {
+      if (!data.presets[name]) continue;
+      const arr = data.presets[name].map(n => `""${n}""`).join(',');
+      lines.push(`this setVariable [""Towns_Removed${name}"",[${arr}]];`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+// ============================================================
+// IO STATUS HELPERS
+// ============================================================
+function setIoStatus(msg, type = 'info') {
+  const el = document.getElementById('io-status');
+  el.textContent = msg;
+  el.className = 'io-status ' + type;
+}
+
+function updateIoButtons() {
+  const data = getWaspData();
+  const hasEdits = data && (data.towns.some(t => t._edited) || data._presetsEdited);
+  const hasSqm = !!loadedSqm;
+
+  document.getElementById('btn-download-sqm').disabled = !hasSqm;
+  document.getElementById('btn-export-changes').disabled = !hasEdits;
+}
+
+// ============================================================
+// LOAD mission.sqm FROM TEXT
+// ============================================================
+function loadSqmText(text, filename) {
+  try {
+    // Detect which map
+    let mapKey = null;
+    if (filename) {
+      const fn = filename.toLowerCase();
+      if (fn.includes('chernarus')) mapKey = 'chernarus';
+      else if (fn.includes('takistan')) mapKey = 'takistan';
+    }
+    if (!mapKey) mapKey = detectMapFromSqm(text);
+    if (!mapKey) mapKey = 'chernarus'; // fallback
+
+    const result = sqmParse(text);
+
+    if (result.towns.length === 0) {
+      setIoStatus('No LocationLogicDepot towns found in this file. Is this a WASP mission.sqm?', 'err');
+      return;
+    }
+
+    // Store raw text + parse results
+    loadedSqm          = text;
+    loadedSqmMap       = mapKey;
+    loadedSqmIndex     = result.index;
+    loadedSqmWfLogicInitSpan = result.wfLogicInitSpan;
+
+    // Build originals lookup by name
+    const townsByName = new Map();
+    for (const t of result.towns) {
+      townsByName.set(t.name, { ...t, pos: t.pos.slice(), type: t.type.slice() });
+    }
+    loadedSqmOriginals = { townsByName };
+
+    // Replace townsData for this map with parsed data
+    // (keep the townsData structure intact for other maps)
+    if (!townsData) townsData = {};
+    if (!townsData[mapKey]) {
+      townsData[mapKey] = { towns: [], spawns: [], airports: [], presets: {}, map: mapKey, size: mapKey === 'chernarus' ? 15360 : 12800 };
+    }
+    townsData[mapKey].towns    = result.towns;
+    townsData[mapKey].spawns   = result.spawns;
+    townsData[mapKey].airports = result.airports;
+    townsData[mapKey].presets  = result.presets;
+    delete townsData[mapKey]._presetsEdited;
+
+    // Switch to the detected map
+    if (activeMap !== mapKey) {
+      const sel = document.getElementById('map-select');
+      sel.value = mapKey;
+      switchMap(mapKey);
+    } else {
+      renderAll();
+      renderPresetPanel();
+    }
+
+    const sub = document.getElementById('io-sub');
+    sub.textContent = `loaded: ${filename || 'mission.sqm'} (${mapKey})`;
+
+    setIoStatus(
+      `Loaded ${result.towns.length} towns from ${filename || 'mission.sqm'} (${mapKey}). ` +
+      `Make edits, then click Download.`,
+      'ok'
+    );
+    document.getElementById('btn-download-sqm').disabled = false;
+    updateIoButtons();
+
+  } catch (err) {
+    console.error('loadSqmText error:', err);
+    setIoStatus('Parse error: ' + err.message, 'err');
+  }
+}
+
+// ============================================================
+// FILE INPUT & DROP
+// ============================================================
+const ioFileInput = document.getElementById('io-file-input');
+const ioDropzone  = document.getElementById('io-dropzone');
+
+ioFileInput.addEventListener('change', (evt) => {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => loadSqmText(e.target.result, file.name);
+  reader.readAsText(file);
+  // Reset so the same file can be reloaded
+  ioFileInput.value = '';
+});
+
+ioDropzone.addEventListener('dragover', (evt) => {
+  evt.preventDefault();
+  ioDropzone.classList.add('drag-over');
+});
+ioDropzone.addEventListener('dragleave', () => ioDropzone.classList.remove('drag-over'));
+ioDropzone.addEventListener('drop', (evt) => {
+  evt.preventDefault();
+  ioDropzone.classList.remove('drag-over');
+  const file = evt.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => loadSqmText(e.target.result, file.name);
+  reader.readAsText(file);
+});
+
+// ============================================================
+// DOWNLOAD MODIFIED mission.sqm
+// ============================================================
+document.getElementById('btn-download-sqm').addEventListener('click', () => {
+  if (!loadedSqm) return;
+  const out = produceSqmOutput();
+  if (!out) {
+    setIoStatus('Nothing to download.', 'info');
+    return;
+  }
+  const blob = new Blob([out], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'mission.sqm';
+  a.click();
+  URL.revokeObjectURL(url);
+  setIoStatus('Downloaded. Non-edited content is byte-identical to the original.', 'ok');
+});
+
+// ============================================================
+// CHANGE-LIST EXPORT (copy to clipboard + show textarea)
+// ============================================================
+document.getElementById('btn-export-changes').addEventListener('click', () => {
+  const cl = loadedSqm ? buildSqmChangeListFromLoaded() : buildChangeList();
+  if (!cl.trim()) {
+    setIoStatus('No edits to export.', 'info');
+    return;
+  }
+  // Show in textarea
+  const label  = document.getElementById('io-change-label');
+  const output = document.getElementById('io-change-output');
+  label.style.display  = 'block';
+  output.style.display = 'block';
+  output.value = cl;
+
+  // Copy to clipboard
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(cl).then(() => {
+      setIoStatus('Change-list copied to clipboard.', 'ok');
+    }).catch(() => {
+      setIoStatus('Change-list shown below (clipboard denied).', 'info');
+    });
+  } else {
+    setIoStatus('Change-list shown below.', 'info');
+  }
+});
+
+/** Change-list when a sqm IS loaded — show just the diff blocks */
+function buildSqmChangeListFromLoaded() {
+  const data = getWaspData();
+  if (!data) return '';
+  const lines = [];
+
+  for (const t of data.towns) {
+    if (!t._edited) continue;
+    const orig = loadedSqmOriginals && loadedSqmOriginals.townsByName.get(t.name);
+    const span = loadedSqmIndex && loadedSqmIndex.get(t.name);
+    lines.push(`// === ${t.name} ===`);
+    const posChanged  = !orig || Math.abs(t.pos[0] - orig.pos[0]) > 0.0001 || Math.abs(t.pos[1] - orig.pos[1]) > 0.0001;
+    const attrChanged = !orig || t.startSV !== orig.startSV || t.maxSV !== orig.maxSV ||
+                        t.value !== orig.value ||
+                        JSON.stringify(t.type.slice().sort()) !== JSON.stringify(orig.type.slice().sort());
+    if (posChanged)  lines.push(buildPosStr(t, span || null));
+    if (attrChanged) lines.push(buildInitStr(t));
+    lines.push('');
+  }
+
+  if (data._presetsEdited && data.presets) {
+    lines.push('// === Preset arrays (WF_Logic init) ===');
+    for (const name of PRESET_NAMES) {
+      if (!data.presets[name]) continue;
+      const arr = data.presets[name].map(n => `""${n}""`).join(',');
+      lines.push(`this setVariable [""Towns_Removed${name}"",[${arr}]];`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+init();
+</script>
+</body>
+</html>
