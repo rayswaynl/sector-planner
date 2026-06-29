@@ -1,0 +1,1618 @@
+{
+  "chernarus": {
+    "towns": [
+      {
+        "name": "Kamenka",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 45,
+        "value": 300,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          1827.0815,
+          2260.6648
+        ]
+      },
+      {
+        "name": "Pavlovo",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 45,
+        "value": 250,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          1754.4755,
+          3925.2046
+        ]
+      },
+      {
+        "name": "Komarovo",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 55,
+        "value": 300,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          3512.3984,
+          2484.6675
+        ]
+      },
+      {
+        "name": "Zelenogorsk",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1000,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          2591.27,
+          5436.5405
+        ]
+      },
+      {
+        "name": "Chernogorsk",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1000,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          6832.9893,
+          2438.5396
+        ]
+      },
+      {
+        "name": "Bor",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 250,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          3333.8623,
+          3921.2539
+        ]
+      },
+      {
+        "name": "Nadezhdino",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 300,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          5924.6938,
+          4726.5522
+        ]
+      },
+      {
+        "name": "Prigorodki",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 30,
+        "value": 100,
+        "type": [
+          "TinyTown1"
+        ],
+        "pos": [
+          8118.1455,
+          3306.4905
+        ]
+      },
+      {
+        "name": "Pusta",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 250,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          9110.3887,
+          3808.6809
+        ]
+      },
+      {
+        "name": "Elektrozavodsk",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1000,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          10279.91,
+          1970.0302
+        ]
+      },
+      {
+        "name": "Kamyshovo",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 200,
+        "type": [
+          "TinyTown1"
+        ],
+        "pos": [
+          11959.668,
+          3522.5967
+        ]
+      },
+      {
+        "name": "Tulga",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 100,
+        "type": [
+          "SmallTown1"
+        ],
+        "pos": [
+          12784.889,
+          4473.2334
+        ]
+      },
+      {
+        "name": "Msta",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 100,
+        "type": [
+          "SmallTown1"
+        ],
+        "pos": [
+          11395.063,
+          5510.4722
+        ]
+      },
+      {
+        "name": "Staroye",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 80,
+        "value": 500,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          10061.502,
+          5438.9678
+        ]
+      },
+      {
+        "name": "Mogilevka",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 100,
+        "value": 500,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          7477.0117,
+          5203.2559
+        ]
+      },
+      {
+        "name": "Shakhovka",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 45,
+        "value": 250,
+        "type": [
+          "TinyTown1"
+        ],
+        "pos": [
+          9735.3633,
+          6516.8867
+        ]
+      },
+      {
+        "name": "Guglovo",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 55,
+        "value": 250,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          8414.1094,
+          6737.7695
+        ]
+      },
+      {
+        "name": "Novy Sobor",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 65,
+        "value": 300,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          7140.168,
+          7757.6812
+        ]
+      },
+      {
+        "name": "Vyshnoye",
+        "dubbing": "Vyshnoe",
+        "startSV": 10,
+        "maxSV": 60,
+        "value": 250,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          6531.8994,
+          6151.3755
+        ]
+      },
+      {
+        "name": "Pulkovo",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 250,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          4994.7197,
+          5595.1274
+        ]
+      },
+      {
+        "name": "Myshkino",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 250,
+        "type": [
+          "TinyTown1",
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          1915.7811,
+          7439.4722
+        ]
+      },
+      {
+        "name": "Pustoshka",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 300,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          3111.6672,
+          7946.6987
+        ]
+      },
+      {
+        "name": "Stary Sobor",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 150,
+        "value": 500,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          6221.8804,
+          7821.8486
+        ]
+      },
+      {
+        "name": "Vybor",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 250,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          3724.3477,
+          8987.7119
+        ]
+      },
+      {
+        "name": "Lopatino",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 80,
+        "value": 500,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          2787.1118,
+          9831.5303
+        ]
+      },
+      {
+        "name": "Kabanino",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 65,
+        "value": 300,
+        "type": [
+          "MediumTown1",
+          "MediumTown2",
+          "SmallTown2"
+        ],
+        "pos": [
+          5423.9639,
+          8616.2129
+        ]
+      },
+      {
+        "name": "Petrovka",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 250,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          4983.5913,
+          12593.044
+        ]
+      },
+      {
+        "name": "Grishino",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 80,
+        "value": 500,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          6076.0688,
+          10377.679
+        ]
+      },
+      {
+        "name": "Gvozdno",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 250,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          8639.627,
+          11946.326
+        ]
+      },
+      {
+        "name": "Dolina",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 250,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          11268.777,
+          6593.4717
+        ]
+      },
+      {
+        "name": "Solnichniy",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 80,
+        "value": 500,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          13405.914,
+          6177.9287
+        ]
+      },
+      {
+        "name": "Nizhnoye",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 200,
+        "type": [
+          "TinyTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          12958.455,
+          8094.9795
+        ]
+      },
+      {
+        "name": "Polana",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 300,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          10702.236,
+          7983.438
+        ]
+      },
+      {
+        "name": "Gorka",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 80,
+        "value": 500,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          9629.248,
+          8865.7236
+        ]
+      },
+      {
+        "name": "Dubrovka",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 55,
+        "value": 300,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          10492.447,
+          9831.4365
+        ]
+      },
+      {
+        "name": "Berezino",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1000,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          12124.921,
+          9145.0488
+        ]
+      },
+      {
+        "name": "Krasnostav",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1000,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          10984.048,
+          12372.459
+        ]
+      },
+      {
+        "name": "Khelm",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 45,
+        "value": 100,
+        "type": [
+          "SmallTown1"
+        ],
+        "pos": [
+          12376.249,
+          10878.046
+        ]
+      },
+      {
+        "name": "Olsha",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 30,
+        "value": 100,
+        "type": [
+          "TinyTown1"
+        ],
+        "pos": [
+          13385.615,
+          12855.703
+        ]
+      },
+      {
+        "name": "Rogovo",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 250,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          4732.7842,
+          6766.9482
+        ]
+      }
+    ],
+    "spawns": [
+      {
+        "pos": [
+          10203.106,
+          4053.7334
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          4467.7832,
+          4586.5024
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          2603.9617,
+          3470.2007
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          9198.749,
+          4995.9619
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          8551.0811,
+          8099.0674
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          2448.2297,
+          6811.9536
+        ],
+        "side": "west",
+        "spawn_pos": "north"
+      },
+      {
+        "pos": [
+          5096.7422,
+          10892.126
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          4177.458,
+          10977.815
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          10390.624,
+          3472.9731
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          12227.901,
+          7267.5225
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          10538.631,
+          7071.0952
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          6863.7095,
+          4543.0479
+        ],
+        "side": "resistance",
+        "spawn_pos": "central"
+      },
+      {
+        "pos": [
+          1820.6282,
+          8878.418
+        ],
+        "side": "west",
+        "spawn_pos": "north"
+      },
+      {
+        "pos": [
+          6313.9653,
+          3348.4028
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          8601.5068,
+          10102.537
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          11474.113,
+          11329.947
+        ],
+        "side": "east",
+        "spawn_pos": "south"
+      },
+      {
+        "pos": [
+          12423.729,
+          6215.061
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          5261.6489,
+          3635.3135
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          10938.223,
+          9180.0889
+        ],
+        "side": null,
+        "spawn_pos": null
+      }
+    ],
+    "airports": [
+      {
+        "pos": [
+          4824.0562,
+          2500.5276
+        ]
+      },
+      {
+        "pos": [
+          4479.3252,
+          10618.404
+        ]
+      },
+      {
+        "pos": [
+          11812.525,
+          12623.792
+        ]
+      }
+    ],
+    "presets": {
+      "XSmall": [
+        "Zelenogorsk",
+        "Dolina",
+        "StarySobor",
+        "Myshkino",
+        "Chernogorsk",
+        "Dubrovka",
+        "Pogorevka",
+        "Staroye",
+        "Khelm",
+        "Kamyshovo",
+        "Pavlovo",
+        "Nadezhdino",
+        "Mogilevka",
+        "Vyshnoye",
+        "Berezino",
+        "Krasnostav",
+        "Gorka",
+        "Elektrozavodsk",
+        "Msta",
+        "Komarovo",
+        "Petrovka",
+        "Shakhovka",
+        "Prigorodki",
+        "Olsha",
+        "Orlovets",
+        "Solnichniy",
+        "Tulga",
+        "Kozlovka",
+        "Polana",
+        "Kamenka",
+        "Gvozdno",
+        "NovySobor",
+        "Pusta",
+        "Guglovo"
+      ],
+      "Small": [
+        "Zelenogorsk",
+        "Dolina",
+        "StarySobor",
+        "Lopatino",
+        "Myshkino",
+        "Chernogorsk",
+        "Pogorevka",
+        "Kabanino",
+        "Staroye",
+        "Kamyshovo",
+        "Vybor",
+        "Pavlovo",
+        "Nadezhdino",
+        "Grishino",
+        "Mogilevka",
+        "Vyshnoye",
+        "Elektrozavodsk",
+        "Msta",
+        "Komarovo",
+        "Petrovka",
+        "Shakhovka",
+        "Prigorodki",
+        "Solnichniy",
+        "Tulga",
+        "Kozlovka",
+        "Pustoshka",
+        "Kamenka",
+        "NovySobor",
+        "Pusta",
+        "Guglovo"
+      ],
+      "Medium": [
+        "Dolina",
+        "Dubrovka",
+        "Staroye",
+        "Elektrozavodsk",
+        "Berezino",
+        "Krasnostav",
+        "Khelm",
+        "Kamyshovo",
+        "Vyshnoye",
+        "Gorka",
+        "Msta",
+        "Petrovka",
+        "Shakhovka",
+        "Prigorodki",
+        "Olsha",
+        "Orlovets",
+        "Solnichniy",
+        "Tulga",
+        "Polana",
+        "Gvozdno",
+        "NovySobor",
+        "Pusta",
+        "Guglovo"
+      ],
+      "Large": [
+        "Msta",
+        "Prigorodki",
+        "Orlovets",
+        "Kozlovka",
+        "NovySobor",
+        "Kabanino",
+        "Vyshnoye",
+        "Pustoshka",
+        "Dolina",
+        "Shakhovka"
+      ],
+      "BigTowns": [
+        "Elektrozavodsk",
+        "Berezino",
+        "Krasnostav",
+        "Chernogorsk",
+        "Zelenogorsk",
+        "StarySobor",
+        "Lopatino",
+        "Mogilevka",
+        "Gorka",
+        "Staroye",
+        "Solnichniy",
+        "Grishino"
+      ],
+      "CentralLine": [
+        "NovySobor",
+        "Kabanino",
+        "Dolina",
+        "Shakhovka",
+        "Msta",
+        "StarySobor",
+        "Lopatino",
+        "Tulga",
+        "Vybor",
+        "Guglovo",
+        "Komarovo",
+        "Pavlovo",
+        "Kamenka",
+        "Olsa",
+        "Myshkino"
+      ],
+      "SmallTowns": [
+        "Pustoshka",
+        "Pavlovo",
+        "Prigorodki",
+        "Kamyshovo",
+        "Kabanino",
+        "Vybor",
+        "Vishnoye",
+        "Polana",
+        "Olsha",
+        "Dolina",
+        "Kamyshovo",
+        "Msta",
+        "Petrovka",
+        "Shakhovka",
+        "Tulga",
+        "Kamenka",
+        "NovySobor"
+      ]
+    },
+    "map": "chernarus",
+    "size": 15360
+  },
+  "takistan": {
+    "towns": [
+      {
+        "name": "Chak Chak",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 80,
+        "value": 800,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          4388.9717,
+          747.7626
+        ]
+      },
+      {
+        "name": "Huzrutimam",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 600,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          6077.8228,
+          1082.199
+        ]
+      },
+      {
+        "name": "Landay",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 400,
+        "type": [
+          "SmallTown1"
+        ],
+        "pos": [
+          2072.8567,
+          303.8957
+        ]
+      },
+      {
+        "name": "Loy Manara",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1000,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          8532.2041,
+          2467.0283
+        ]
+      },
+      {
+        "name": "Sultansafee",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          6483.9351,
+          2080.521
+        ]
+      },
+      {
+        "name": "Jaza",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 400,
+        "type": [
+          "SmallTown1"
+        ],
+        "pos": [
+          9231.8721,
+          1832.2489
+        ]
+      },
+      {
+        "name": "Chardarakht",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          10276.688,
+          2331.5151
+        ]
+      },
+      {
+        "name": "Hazar Bagh",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 30,
+        "value": 400,
+        "type": [
+          "SmallTown1"
+        ],
+        "pos": [
+          11925.729,
+          2642.0129
+        ]
+      },
+      {
+        "name": "Chaman",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          513.2121,
+          2805.5681
+        ]
+      },
+      {
+        "name": "Shukurkalay",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 60,
+        "value": 600,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          1480.6228,
+          3513.2825
+        ]
+      },
+      {
+        "name": "Sakhee",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 80,
+        "value": 800,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          3673.4937,
+          4347.6406
+        ]
+      },
+      {
+        "name": "Jilavur",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          2535.103,
+          5046.543
+        ]
+      },
+      {
+        "name": "Khushab",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          1609.3451,
+          5681.8618
+        ]
+      },
+      {
+        "name": "Mulladoost",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 60,
+        "value": 600,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          2089.9946,
+          7687.0649
+        ]
+      },
+      {
+        "name": "Kakaru",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          5313.7852,
+          4779.6426
+        ]
+      },
+      {
+        "name": "Anar",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "MediumTown1"
+        ],
+        "pos": [
+          6135.3799,
+          5670.7153
+        ]
+      },
+      {
+        "name": "Feeruz Abad",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1200,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          5203.1616,
+          6070.1782
+        ]
+      },
+      {
+        "name": "Timurkalay",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          8994.1221,
+          5337.1387
+        ]
+      },
+      {
+        "name": "Falar",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 600,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          5957.8594,
+          7360.5923
+        ]
+      },
+      {
+        "name": "Garmarud",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 600,
+        "type": [
+          "MediumTown1",
+          "MediumTown2"
+        ],
+        "pos": [
+          9101.4307,
+          6755.5879
+        ]
+      },
+      {
+        "name": "Garmsar",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1000,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          10880.748,
+          6405.0762
+        ]
+      },
+      {
+        "name": "Imarat",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2",
+          "MediumTown1"
+        ],
+        "pos": [
+          8208.2012,
+          7770.2744
+        ]
+      },
+      {
+        "name": "Gospandi",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          3666.8521,
+          8540.1348
+        ]
+      },
+      {
+        "name": "Ravanay",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 400,
+        "type": [
+          "SmallTown1"
+        ],
+        "pos": [
+          11483.861,
+          8302.2217
+        ]
+      },
+      {
+        "name": "Karachinar",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          12295.607,
+          10398.317
+        ]
+      },
+      {
+        "name": "Nur",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 50,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          1784.3358,
+          11932.754
+        ]
+      },
+      {
+        "name": "Zavarak",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 80,
+        "value": 800,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          9813.3555,
+          11495.399
+        ]
+      },
+      {
+        "name": "Bastam",
+        "dubbing": "+",
+        "startSV": 20,
+        "maxSV": 70,
+        "value": 800,
+        "type": [
+          "LargeTown1",
+          "LargeTown2"
+        ],
+        "pos": [
+          5871.4014,
+          8999.9102
+        ]
+      },
+      {
+        "name": "Nagara",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1000,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          3139.7014,
+          9963.5332
+        ]
+      },
+      {
+        "name": "Rasman",
+        "dubbing": "+",
+        "startSV": 30,
+        "maxSV": 120,
+        "value": 1000,
+        "type": [
+          "HugeTown1",
+          "HugeTown2"
+        ],
+        "pos": [
+          6309.1768,
+          11122.313
+        ]
+      },
+      {
+        "name": "Shamali",
+        "dubbing": "+",
+        "startSV": 10,
+        "maxSV": 40,
+        "value": 500,
+        "type": [
+          "SmallTown1",
+          "SmallTown2"
+        ],
+        "pos": [
+          4080.543,
+          11720.006
+        ]
+      }
+    ],
+    "spawns": [
+      {
+        "pos": [
+          7292.3618,
+          10549.792
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          5551.0752,
+          12268.397
+        ],
+        "side": "east",
+        "spawn_pos": "south"
+      },
+      {
+        "pos": [
+          4179.7285,
+          2062.6057
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          7874.2163,
+          3261.4509
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          169.9826,
+          7329.5396
+        ],
+        "side": "resistance",
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          4670.6445,
+          9203.4414
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          8465.3018,
+          8603.3574
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          4747.4932,
+          3135.9883
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          7530.9238,
+          4960.3774
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          3714.6399,
+          5635.7466
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          648.1359,
+          4569.1333
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          7286.9551,
+          760.8431
+        ],
+        "side": "west",
+        "spawn_pos": "north"
+      },
+      {
+        "pos": [
+          9249.5947,
+          10019.383
+        ],
+        "side": null,
+        "spawn_pos": null
+      },
+      {
+        "pos": [
+          4760.7427,
+          10413.081
+        ],
+        "side": null,
+        "spawn_pos": null
+      }
+    ],
+    "airports": [
+      {
+        "pos": [
+          8191.4199,
+          1803.4586
+        ]
+      },
+      {
+        "pos": [
+          5689.9028,
+          11181.199
+        ]
+      }
+    ],
+    "presets": {
+      "XSmall": [
+        "FeeruzAbad",
+        "Nagara",
+        "Garmsar",
+        "Bastam",
+        "Zavarak",
+        "ChakChak",
+        "Sakhee",
+        "Garmarud",
+        "Falar",
+        "Chaman",
+        "Mulladoost",
+        "Nur",
+        "Karachinar",
+        "Rasman",
+        "Ravanay",
+        "Imarat",
+        "Shamali",
+        "Gospandi",
+        "Landay",
+        "Jaza",
+        "Timurkalay",
+        "Sultansafee",
+        "Shukurkalay",
+        "Jilavur",
+        "Khushab",
+        "Kakaru",
+        "Anar",
+        "HazarBagh"
+      ],
+      "Small": [
+        "FeeruzAbad",
+        "Garmsar",
+        "Zavarak",
+        "ChakChak",
+        "LoyManara",
+        "Sakhee",
+        "Garmarud",
+        "Falar",
+        "Chaman",
+        "Mulladoost",
+        "Chardarakht",
+        "Karachinar",
+        "Ravanay",
+        "Imarat",
+        "Landay",
+        "Jaza",
+        "Timurkalay",
+        "Huzrutimam",
+        "Sultansafee",
+        "Shukurkalay",
+        "Jilavur",
+        "Khushab",
+        "Kakaru",
+        "Anar",
+        "HazarBagh"
+      ],
+      "Medium": [
+        "FeeruzAbad",
+        "Garmsar",
+        "Zavarak",
+        "ChakChak",
+        "LoyManara",
+        "Sakhee",
+        "Chaman",
+        "Chardarakht",
+        "Nur",
+        "Karachinar",
+        "Ravanay",
+        "Landay",
+        "Jaza",
+        "Timurkalay",
+        "Huzrutimam",
+        "Sultansafee",
+        "Shukurkalay",
+        "Jilavur",
+        "Kakaru",
+        "Anar",
+        "HazarBagh"
+      ],
+      "Large": [
+        "Chaman",
+        "HazarBagh",
+        "Nur",
+        "Landay"
+      ]
+    },
+    "map": "takistan",
+    "size": 12800
+  }
+}
