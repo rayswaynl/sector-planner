@@ -46,6 +46,20 @@
 
 ---
 
+## Task 2.5: Preload ALL Arma 2 maps (data + switcher + locations layer)
+
+**Files:** Create `tools/extract_worlds.py`, `tools/test_extract_worlds.py`; modify `index.html`.
+
+Source: `C:\Users\Steff\arma2-co-config-reference\Config\CfgWorlds.txt`. **7 playable worlds**: `utes` (15360→ no; **5120**), `Chernarus` (**15360**), `Takistan` (**12800**), `Zargabad` (**8192**), `Shapur_BAF` (**2048**), `ProvingGrounds_PMC` (**2048**, 0 locs), `Desert_E` (**2048**, 0 locs). **Size** = `class Grid` `offsetY` when stepY is negative; for `Chernarus`/`utes` (offsetY=0, stepY positive) hardcode 15360/5120. **Locations**: each world has `class Names { class <id> { name="..."; position[]={x,y}; type="NameCityCapital|NameCity|NameVillage|NameLocal|FlatArea|StrongpointArea"; radiusA; ... } }`. `position[]` is `[x,y]` world metres (same as mission.sqm). ACR (Bystrica/Bukovina) NOT in this reference — note it, don't fabricate.
+
+- [ ] **Step 1: Generator** `extract_worlds.py` (stdlib, TDD): parse CfgWorlds → `assets/data/maps.json` = `{ <worldKey>: { name, worldName, size, locations:[{name, pos:[x,y], type}] } }` for all 7. Tests on inline fixtures (Grid offsetY→size; a `Names` block→locations; the Chernarus/Utes hardcode fallback). Run → maps.json. Sanity: chernarus size 15360 + ~756 locs; takistan 12800 + ~408; zargabad 8192 + ~107; the 2 empty maps present with 0 locs + correct size.
+- [ ] **Step 2: Switcher** — replace the 2-map toggle with a **dropdown of all 7 worlds** (label + size). Selecting re-fits the camera to that map's size.
+- [ ] **Step 3: Locations layer** — render each map's CfgWorlds locations as markers **typed** by `type`: settlements (`NameCityCapital`/`NameCity`/`NameVillage`) prominent + labelled (capital>city>village sizing); `NameLocal`/`FlatArea`/`StrongpointArea` subtle, **off by default** (toggle) to avoid clutter on 756-marker Chernarus. Distinct styling from WASP towns.
+- [ ] **Step 4: Keep WASP-town layer** — for `chernarus`/`takistan` ALSO load `seed-towns.json` and draw the editable WASP towns on top (the orange value-sized markers + capture rings + spawns/airfields), visually distinct from the reference locations. Other 5 maps: locations only (campaign-from-scratch ready for later).
+- [ ] **Step 5: Verify (Playwright)** — each of the 7 maps selectable + renders (0 console errors); chernarus shows WASP towns + ~756 locs; takistan ~408; utes 138; zargabad 107; shapur 7; the 2 empty maps render grid + 0 locs. Screenshot Chernarus (towns+locations) and one new map (e.g. Zargabad). **Commit** `feat: preload all 7 Arma 2 worlds (CfgWorlds) — switcher + locations layer`.
+
+---
+
 ## Task 3: Edit interactions
 
 **Files:** Modify `index.html`.
