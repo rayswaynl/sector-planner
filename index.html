@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sector Planner — WASP Campaign Map</title>
-<meta name="description" content="Strategic sector and town planner for WASP Warfare — view and edit town positions, supply values, and presets on the Chernarus / Takistan map.">
+<meta name="description" content="Strategic sector and town planner for WASP Warfare — view and edit town positions, supply values, and presets on all 7 Arma 2 maps.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -14,6 +14,9 @@
     --olive:#5C6536; --bone:#E7E3D6; --orange:#D9763C; --orange-deep:#B85F2A;
     --chalk:#F2EFE8; --line:#39414b; --danger:#c0392b;
     --west:#5D82A3; --east:#A8503F; --guer:#5C6536; --neutral:#7A8490;
+    /* Locations layer colours (cooler/neutral — distinct from WASP orange) */
+    --loc-capital:#A0C4D8; --loc-city:#7AAEC4; --loc-village:#5090A8;
+    --loc-minor:#3a5f72;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;background:var(--gunmetal);color:var(--bone);overflow:hidden}
@@ -34,7 +37,7 @@
   .brandbar .chip b{color:var(--olive)}
 
   /* ---- App layout ---- */
-  .app{display:grid;grid-template-columns:260px 1fr 300px;height:calc(100% - 54px)}
+  .app{display:grid;grid-template-columns:270px 1fr 300px;height:calc(100% - 54px)}
   .panel{background:var(--steel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
   .panel.right{border-right:none;border-left:1px solid var(--line)}
   .panel header{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--gunmetal);flex:0 0 auto}
@@ -45,20 +48,31 @@
   /* ---- Controls panel ---- */
   label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#9aa3ad;margin:10px 0 4px}
   label:first-child{margin-top:0}
-  .segmented{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-  .segmented button{flex:1;border:none;border-radius:0;background:var(--gunmetal);padding:9px 6px;font-size:12px;color:#9aa3ad;cursor:pointer;font-family:inherit}
-  .segmented button+button{border-left:1px solid var(--line)}
-  .segmented button:hover{color:var(--bone)}
-  .segmented button.on{background:var(--orange);color:#1a1208;font-weight:600}
+
+  /* Map dropdown */
+  .map-select-wrap{position:relative}
+  .map-select-wrap select{
+    width:100%;appearance:none;background:var(--gunmetal);border:1px solid var(--line);
+    border-radius:6px;color:var(--bone);padding:9px 30px 9px 10px;font-size:12px;
+    font-family:inherit;cursor:pointer;outline:none
+  }
+  .map-select-wrap select:hover{border-color:var(--orange)}
+  .map-select-wrap select:focus{border-color:var(--orange)}
+  .map-select-wrap::after{
+    content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    color:var(--orange);pointer-events:none;font-size:14px
+  }
 
   .toggle-row{display:flex;align-items:center;gap:7px;margin:6px 0;font-size:12px;color:var(--bone)}
   .toggle-row input[type=checkbox]{accent-color:var(--orange);width:14px;height:14px;cursor:pointer}
+  .toggle-row.indent{padding-left:20px;color:#9aa3ad;font-size:11px}
 
   .divider{height:1px;background:var(--line);margin:14px 0}
 
   .legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:#9aa3ad;margin:5px 0;font-family:'JetBrains Mono',monospace}
   .legend-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
   .legend-ring{width:10px;height:10px;border-radius:50%;border:1.5px solid;flex:0 0 auto;background:transparent}
+  .legend-diamond{width:8px;height:8px;flex:0 0 auto;transform:rotate(45deg)}
 
   .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
   .stat-cell{background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;padding:7px 9px}
@@ -86,6 +100,13 @@
 
   .spawn-marker{pointer-events:none}
   .airport-marker{pointer-events:none}
+
+  /* ---- Location markers (CfgWorlds reference data) ---- */
+  .loc-capital{pointer-events:none}
+  .loc-city{pointer-events:none}
+  .loc-village{pointer-events:none}
+  .loc-minor{pointer-events:none}
+  .loc-label{pointer-events:none}
 
   /* ---- Zoom/pan overlay controls ---- */
   .map-overlay{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;z-index:3}
@@ -137,7 +158,7 @@
     <span class="t1">SECTOR PLANNER</span>
     <span class="t2">WASP CAMPAIGN MAP</span>
   </div>
-  <div class="tool"><b>Sector &amp; Town Planner</b> · Chernarus / Takistan</div>
+  <div class="tool"><b>Sector &amp; Town Planner</b> · <span id="bar-map-name">Chernarus</span></div>
   <div class="spacer"></div>
   <div class="chip">coords: <b>world-space metres</b> · Y-north up</div>
 </div>
@@ -153,18 +174,35 @@
     <div class="scroll">
 
       <label>Map</label>
-      <div class="segmented" id="map-switcher">
-        <button class="on" data-map="chernarus">Chernarus</button>
-        <button data-map="takistan">Takistan</button>
+      <div class="map-select-wrap">
+        <select id="map-select">
+          <!-- Populated by JS once maps.json is loaded -->
+        </select>
       </div>
 
       <div class="divider"></div>
 
       <label>Show layers</label>
-      <div class="toggle-row"><input type="checkbox" id="show-towns" checked> Town markers</div>
-      <div class="toggle-row"><input type="checkbox" id="show-rings" checked> Capture rings (600 m)</div>
-      <div class="toggle-row"><input type="checkbox" id="show-spawns" checked> Spawn points</div>
-      <div class="toggle-row"><input type="checkbox" id="show-airports" checked> Airfields</div>
+
+      <!-- WASP layer (towns from seed-towns.json) -->
+      <div class="toggle-row" id="wasp-layer-row">
+        <input type="checkbox" id="show-towns" checked> WASP towns
+      </div>
+      <div class="toggle-row indent" id="wasp-rings-row">
+        <input type="checkbox" id="show-rings" checked> Capture rings (600 m)
+      </div>
+      <div class="toggle-row indent" id="wasp-spawns-row">
+        <input type="checkbox" id="show-spawns" checked> Spawn points
+      </div>
+      <div class="toggle-row indent" id="wasp-airports-row">
+        <input type="checkbox" id="show-airports" checked> Airfields
+      </div>
+
+      <!-- Reference locations layer (CfgWorlds) -->
+      <div class="toggle-row"><input type="checkbox" id="show-locs-settlements" checked> Locations: settlements</div>
+      <div class="toggle-row"><input type="checkbox" id="show-locs-minor"> Locations: minor</div>
+
+      <!-- General -->
       <div class="toggle-row"><input type="checkbox" id="show-grid" checked> Coordinate grid</div>
       <div class="toggle-row"><input type="checkbox" id="show-labels" checked> Town labels</div>
 
@@ -172,21 +210,27 @@
 
       <label>Map statistics</label>
       <div class="stat-grid" id="stat-grid">
-        <div class="stat-cell"><div class="val" id="stat-towns">–</div><div class="lbl">Towns</div></div>
+        <div class="stat-cell"><div class="val" id="stat-towns">–</div><div class="lbl">WASP Towns</div></div>
+        <div class="stat-cell"><div class="val" id="stat-locs">–</div><div class="lbl">Ref Locs</div></div>
         <div class="stat-cell"><div class="val" id="stat-spawns">–</div><div class="lbl">Spawns</div></div>
-        <div class="stat-cell"><div class="val" id="stat-airports">–</div><div class="lbl">Airfields</div></div>
         <div class="stat-cell"><div class="val" id="stat-size">–</div><div class="lbl">Map km</div></div>
       </div>
 
       <div class="divider"></div>
 
       <label>Legend</label>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--neutral);border:1px solid var(--bone)"></div>Town (neutral)</div>
+      <!-- WASP towns -->
+      <div class="legend-item"><div class="legend-dot" style="background:var(--neutral);border:1px solid var(--bone)"></div>WASP Town</div>
       <div class="legend-item"><div class="legend-ring" style="border-color:rgba(217,118,60,.5)"></div>Capture ring (600 m)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--west)"></div>Spawn — WEST (blue)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--east)"></div>Spawn — EAST (red)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--guer)"></div>Spawn — GUER (olive)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#888"></div>Spawn — neutral</div>
+      <!-- Locations reference layer -->
+      <div class="legend-item"><div class="legend-dot" style="background:var(--loc-capital);border:2px solid #d4eaf6"></div>Capital (ref)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--loc-city)"></div>City (ref)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--loc-village);opacity:.8"></div>Village (ref)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--loc-minor);opacity:.7"></div>Minor (ref, hidden)</div>
+      <!-- Spawns / airports -->
+      <div class="legend-item"><div class="legend-dot" style="background:var(--west)"></div>Spawn — WEST</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--east)"></div>Spawn — EAST</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--guer)"></div>Spawn — GUER</div>
       <div class="legend-item">
         <svg width="10" height="10" viewBox="0 0 10 10" style="flex:0 0 auto">
           <path d="M5,1 L9,9 L1,9 Z" fill="none" stroke="var(--orange)" stroke-width="1.5"/>
@@ -198,7 +242,8 @@
 
       <div style="font-size:11px;color:#5a6470;line-height:1.6">
         Scroll to zoom · drag map to pan<br>
-        Click a town to inspect
+        Click a WASP town to inspect<br>
+        Ref locations = CfgWorlds (read-only)
       </div>
 
     </div>
@@ -216,17 +261,23 @@
       <g id="pz-root">
         <!-- Grid group -->
         <g id="g-grid"></g>
+        <!-- Reference locations — settlements (below WASP towns) -->
+        <g id="g-locs-settlements"></g>
+        <!-- Reference locations — minor (optional) -->
+        <g id="g-locs-minor"></g>
         <!-- Capture rings -->
         <g id="g-rings"></g>
         <!-- Airfields -->
         <g id="g-airports"></g>
         <!-- Spawns -->
         <g id="g-spawns"></g>
-        <!-- Town markers -->
+        <!-- WASP Town markers (on top) -->
         <g id="g-towns"></g>
         <!-- Town labels -->
         <g id="g-labels"></g>
-        <!-- Map border (on top) -->
+        <!-- Location labels (settlements) -->
+        <g id="g-loc-labels"></g>
+        <!-- Map border (topmost) -->
         <rect id="map-border-rect" class="map-border"/>
       </g>
     </svg>
@@ -244,10 +295,10 @@
   <div class="panel right">
     <header>
       <h2>Inspector</h2>
-      <div class="sub">click a town to inspect</div>
+      <div class="sub">click a WASP town to inspect</div>
     </header>
     <div class="scroll" id="inspector-body">
-      <div class="inspector-empty">No town selected.<br>Click any town marker on the map to inspect its properties.</div>
+      <div class="inspector-empty">No town selected.<br>Click any WASP town marker on the map to inspect its properties.</div>
     </div>
   </div>
 
@@ -255,52 +306,42 @@
 
 <script>
 // ============================================================
-// DATA LOADING
+// DATA
 // ============================================================
-let mapData = null;        // full seed-towns.json
-let activeMap = 'chernarus';
+let mapsData  = null;  // maps.json:   { worldKey: { name, worldName, size, locations } }
+let townsData = null;  // seed-towns.json: { chernarus: {...}, takistan: {...} }
+
+let activeMap    = 'chernarus';
 let selectedTown = null;
 
-// ============================================================
-// COORDINATE MAPPING
-// World origin = bottom-left corner of the map (SW corner).
-// World X grows east, World Y grows north.
-// SVG viewBox = "0 0 SIZE SIZE" with Y-flip via transform
-// on the pz-root group: translate(0, SIZE) scale(1,-1)
-// This means world (0,0) → SVG (0,0) which is the SW corner (correct).
-// Text counter-flip: scale(1,-1) on each label element.
-// ============================================================
+// WASP maps that have seed-towns data
+const WASP_MAPS = new Set(['chernarus', 'takistan']);
+
+// Settlement-class types shown prominently
+const SETTLEMENT_TYPES = new Set([
+  'NameCityCapital', 'NameCity', 'NameVillage'
+]);
 
 // ============================================================
-// PAN / ZOOM STATE
-// We use a camera: { x, y, scale } where
-//   svgX = worldX * scale + x
-//   svgY = worldY * scale + y   (after Y-flip handled in world→screen)
-// Actually we maintain a transform on #pz-root via a matrix:
-//   transform="translate(tx ty) scale(s)"
-// World→screen: sx = worldX * s + tx; sy = (SIZE - worldY) * s + ty
-// (Y is flipped: worldY=0 at bottom → svgY=SIZE at bottom → so we use SIZE-worldY)
+// COORDINATE SYSTEM
+// World origin = SW corner. X grows east, Y grows north.
+// In SVG space: worldX → svgX (unchanged), worldY → SIZE - worldY (flip).
+// Camera: translate(tx, ty) scale(s).
+// Screen coords: sx = worldX * s + tx; sy = (SIZE - worldY) * s + ty
 // ============================================================
-
-const svg = document.getElementById('map-svg');
+const svg    = document.getElementById('map-svg');
 const pzRoot = document.getElementById('pz-root');
 
-let cam = { tx: 0, ty: 0, s: 1 };
+let cam  = { tx: 0, ty: 0, s: 1 };
 let SIZE = 15360;
 
 function applyTransform() {
   pzRoot.setAttribute('transform', `translate(${cam.tx},${cam.ty}) scale(${cam.s})`);
 }
 
-function worldToSVG(wx, wy) {
-  // SVG coordinate space is SIZE x SIZE (no viewBox transform).
-  // Y is flipped: wy=0 → bottom of world → top of svg would be wrong.
-  // We place world origin at top-left by: svgY = SIZE - wy (so wy=SIZE→svgY=0 = top, wy=0→svgY=SIZE = bottom)
-  // then the pz camera scales+translates that.
-  return {
-    x: cam.tx + wx * cam.s,
-    y: cam.ty + (SIZE - wy) * cam.s
-  };
+function worldToSVGLocal(wx, wy) {
+  // Returns position in pz-root's LOCAL space (before camera transform)
+  return { x: wx, y: SIZE - wy };
 }
 
 function svgToWorld(sx, sy) {
@@ -309,13 +350,9 @@ function svgToWorld(sx, sy) {
   return { x: wx, y: wy };
 }
 
-// Get SVG element coordinates from a mouse event
 function svgCoords(evt) {
   const rect = svg.getBoundingClientRect();
-  return {
-    x: evt.clientX - rect.left,
-    y: evt.clientY - rect.top
-  };
+  return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
 }
 
 // ============================================================
@@ -336,21 +373,19 @@ function fitMap() {
 
 function updateScaleBadge() {
   const badge = document.getElementById('scale-badge');
-  // 1 world metre = cam.s SVG px. Find round km markers.
-  const mPerPx = 1 / cam.s;
-  const barWorldM = 1000; // 1 km bar
-  const barPx = barWorldM * cam.s;
+  const barPx = 1000 * cam.s;
   badge.textContent = `1 km = ${barPx.toFixed(0)} px`;
 }
 
 // ============================================================
-// GRID RENDERING (1 km = 1000 m spacing)
+// GRID RENDERING
 // ============================================================
 function renderGrid() {
   const g = document.getElementById('g-grid');
   g.innerHTML = '';
-  const step = 1000; // 1 km
-  const majorEvery = 5; // every 5 km
+  if (!document.getElementById('show-grid').checked) return;
+  const step = 1000;
+  const majorEvery = 5;
   const count = Math.ceil(SIZE / step);
 
   for (let i = 0; i <= count; i++) {
@@ -358,39 +393,27 @@ function renderGrid() {
     const isMajor = (i % majorEvery === 0);
     const cls = isMajor ? 'grid-line-major' : 'grid-line';
 
-    // Vertical line (constant X)
     const vl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     vl.setAttribute('class', cls);
     vl.setAttribute('x1', v); vl.setAttribute('y1', 0);
     vl.setAttribute('x2', v); vl.setAttribute('y2', SIZE);
     g.appendChild(vl);
 
-    // Horizontal line (constant Y, but in our flipped space)
-    // worldY = v → svgY_unscaled = SIZE - v
     const hl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     hl.setAttribute('class', cls);
     hl.setAttribute('x1', 0); hl.setAttribute('y1', SIZE - v);
     hl.setAttribute('x2', SIZE); hl.setAttribute('y2', SIZE - v);
     g.appendChild(hl);
 
-    // Labels at major lines (only bottom edge for X, left edge for Y)
     if (isMajor && v > 0) {
-      // X-axis label (at bottom = worldY=0 → svgY=SIZE)
-      // Counter-flip text: place at svgY=SIZE (worldY=0), with counter-scale
       const tx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       tx.setAttribute('class', 'grid-label');
       tx.setAttribute('x', v);
-      tx.setAttribute('y', SIZE); // worldY=0, svgY=SIZE, but text counter-flip puts it right
-      // We need to counter-rotate the text since pz-root has no flip.
-      // The grid is placed in pz-root's local coord space (already Y-flipped via SIZE-v).
-      // Text at svgY=SIZE would be at world south edge — label it with world X value.
-      // Place slightly above the bottom.
       tx.setAttribute('y', SIZE - 6);
       tx.setAttribute('text-anchor', 'middle');
       tx.textContent = `${v}`;
       g.appendChild(tx);
 
-      // Y-axis label (at left edge = worldX=0)
       if (v < SIZE) {
         const ty = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         ty.setAttribute('class', 'grid-label');
@@ -403,7 +426,6 @@ function renderGrid() {
     }
   }
 
-  // Map border
   const border = document.getElementById('map-border-rect');
   border.setAttribute('x', 0);
   border.setAttribute('y', 0);
@@ -412,13 +434,11 @@ function renderGrid() {
 }
 
 // ============================================================
-// MARKER SIZE from value (sqrt scaling, 4..14 world metres * display factor)
-// We use world-space radii so they scale with zoom correctly.
-// Base: sqrt(value) mapped roughly: value 100 → r~5, value 1000 → r~14, value 300→r~8
+// WASP TOWN MARKER SIZE (value-based, sqrt scaling)
 // ============================================================
 function townRadius(value) {
   const minV = 100, maxV = 1000;
-  const minR = 120, maxR = 460; // world metres
+  const minR = 120, maxR = 460;
   const t = (Math.sqrt(value) - Math.sqrt(minV)) / (Math.sqrt(maxV) - Math.sqrt(minV));
   return minR + t * (maxR - minR);
 }
@@ -438,9 +458,8 @@ function makeSpawnIcon(wx, wy, side) {
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   g.setAttribute('class', 'spawn-marker');
   const svgY = SIZE - wy;
-  const r = 140; // world metres half-size
+  const r = 140;
   const col = spawnColor(side);
-  // Diamond shape: 4 points
   const pts = `${wx},${svgY - r} ${wx + r},${svgY} ${wx},${svgY + r} ${wx - r},${svgY}`;
   const diamond = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   diamond.setAttribute('points', pts);
@@ -460,8 +479,7 @@ function makeAirportIcon(wx, wy) {
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   g.setAttribute('class', 'airport-marker');
   const svgY = SIZE - wy;
-  const r = 200; // world metres
-  // Triangle pointing up (north)
+  const r = 200;
   const pts = `${wx},${svgY - r} ${wx + r},${svgY + r * 0.6} ${wx - r},${svgY + r * 0.6}`;
   const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
   tri.setAttribute('points', pts);
@@ -470,7 +488,6 @@ function makeAirportIcon(wx, wy) {
   tri.setAttribute('stroke-width', '2');
   tri.setAttribute('vector-effect', 'non-scaling-stroke');
   g.appendChild(tri);
-  // Cross/runway mark inside
   const cross = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   cross.setAttribute('x1', wx); cross.setAttribute('y1', svgY - r * 0.3);
   cross.setAttribute('x2', wx); cross.setAttribute('y2', svgY + r * 0.5);
@@ -482,42 +499,105 @@ function makeAirportIcon(wx, wy) {
 }
 
 // ============================================================
-// RENDER MAP DATA
+// LOCATION MARKER PROPERTIES by type
 // ============================================================
-function renderMap(mapName) {
-  if (!mapData) return;
-  const data = mapData[mapName];
-  if (!data) return;
-
-  SIZE = data.size;
-  applyTransform(); // update in case SIZE changed
-
-  // Update stats
-  document.getElementById('stat-towns').textContent = data.towns.length;
-  document.getElementById('stat-spawns').textContent = data.spawns.length;
-  document.getElementById('stat-airports').textContent = data.airports.length;
-  document.getElementById('stat-size').textContent = (SIZE / 1000).toFixed(0);
-
-  // Clip rect
-  const clipRect = document.getElementById('map-clip-rect');
-  clipRect.setAttribute('width', SIZE);
-  clipRect.setAttribute('height', SIZE);
-
-  renderGrid();
-  renderRings(data.towns);
-  renderAirports(data.airports);
-  renderSpawns(data.spawns);
-  renderTowns(data.towns);
-  renderLabels(data.towns);
+function locStyle(type) {
+  switch (type) {
+    case 'NameCityCapital':
+      return { r: 250, fill: 'var(--loc-capital)', stroke: '#d4eaf6', sw: 2, opacity: 0.95 };
+    case 'NameCity':
+      return { r: 170, fill: 'var(--loc-city)', stroke: 'none', sw: 0, opacity: 0.85 };
+    case 'NameVillage':
+      return { r: 100, fill: 'var(--loc-village)', stroke: 'none', sw: 0, opacity: 0.75 };
+    default: // minor: FlatArea, NameLocal, StrongpointArea, etc.
+      return { r: 50, fill: 'var(--loc-minor)', stroke: 'none', sw: 0, opacity: 0.5 };
+  }
 }
 
-function renderRings(towns) {
+function isSettlement(type) {
+  return SETTLEMENT_TYPES.has(type);
+}
+
+// ============================================================
+// RENDER: REFERENCE LOCATIONS
+// ============================================================
+function renderLocations() {
+  const worldData = mapsData ? mapsData[activeMap] : null;
+  const gSettlements = document.getElementById('g-locs-settlements');
+  const gMinor       = document.getElementById('g-locs-minor');
+  const gLocLabels   = document.getElementById('g-loc-labels');
+  gSettlements.innerHTML = '';
+  gMinor.innerHTML = '';
+  gLocLabels.innerHTML = '';
+
+  if (!worldData || !worldData.locations || worldData.locations.length === 0) return;
+
+  const showSettlements = document.getElementById('show-locs-settlements').checked;
+  const showMinor       = document.getElementById('show-locs-minor').checked;
+
+  worldData.locations.forEach(loc => {
+    const settlement = isSettlement(loc.type);
+    if (!showSettlements && settlement) return;
+    if (!showMinor && !settlement) return;
+
+    const [wx, wy] = loc.pos;
+    const svgY = SIZE - wy;
+    const style = locStyle(loc.type);
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', wx);
+    circle.setAttribute('cy', svgY);
+    circle.setAttribute('r', style.r);
+    circle.setAttribute('fill', style.fill);
+    circle.setAttribute('opacity', style.opacity);
+    if (style.stroke !== 'none') {
+      circle.setAttribute('stroke', style.stroke);
+      circle.setAttribute('stroke-width', style.sw);
+      circle.setAttribute('vector-effect', 'non-scaling-stroke');
+    }
+    circle.setAttribute('class', settlement ? (loc.type === 'NameCityCapital' ? 'loc-capital' : 'loc-city') : 'loc-minor');
+
+    if (settlement) {
+      gSettlements.appendChild(circle);
+    } else {
+      gMinor.appendChild(circle);
+    }
+
+    // Labels for named settlements only (skip empty-name entries)
+    if (settlement && showSettlements && loc.name) {
+      const fontSize = loc.type === 'NameCityCapital' ? 220 : loc.type === 'NameCity' ? 180 : 140;
+      const yOff     = loc.type === 'NameCityCapital' ? -300 : loc.type === 'NameCity' ? -220 : -150;
+
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('class', 'loc-label');
+      text.setAttribute('x', wx);
+      text.setAttribute('y', svgY + yOff);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-size', fontSize);
+      text.setAttribute('font-family', "'JetBrains Mono', monospace");
+      text.setAttribute('fill', style.fill);
+      text.setAttribute('opacity', '0.85');
+      text.textContent = loc.name;
+      gLocLabels.appendChild(text);
+    }
+  });
+}
+
+// ============================================================
+// RENDER: WASP LAYERS (towns/rings/spawns/airports)
+// ============================================================
+function getWaspData() {
+  if (!WASP_MAPS.has(activeMap) || !townsData) return null;
+  return townsData[activeMap] || null;
+}
+
+function renderRings() {
   const g = document.getElementById('g-rings');
   g.innerHTML = '';
-  const show = document.getElementById('show-rings').checked;
-  if (!show) return;
-  const RING_R = 600; // metres
-  towns.forEach(t => {
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-rings').checked) return;
+  const RING_R = 600;
+  data.towns.forEach(t => {
     const [wx, wy] = t.pos;
     const svgY = SIZE - wy;
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -529,35 +609,35 @@ function renderRings(towns) {
   });
 }
 
-function renderAirports(airports) {
+function renderAirports() {
   const g = document.getElementById('g-airports');
   g.innerHTML = '';
-  const show = document.getElementById('show-airports').checked;
-  if (!show) return;
-  airports.forEach(a => {
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-airports').checked) return;
+  data.airports.forEach(a => {
     const [wx, wy] = a.pos;
     g.appendChild(makeAirportIcon(wx, wy));
   });
 }
 
-function renderSpawns(spawns) {
+function renderSpawns() {
   const g = document.getElementById('g-spawns');
   g.innerHTML = '';
-  const show = document.getElementById('show-spawns').checked;
-  if (!show) return;
-  spawns.forEach(s => {
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-spawns').checked) return;
+  data.spawns.forEach(s => {
     const [wx, wy] = s.pos;
     g.appendChild(makeSpawnIcon(wx, wy, s.side));
   });
 }
 
-function renderTowns(towns) {
+function renderTowns() {
   const g = document.getElementById('g-towns');
   g.innerHTML = '';
-  const show = document.getElementById('show-towns').checked;
-  if (!show) return;
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-towns').checked) return;
 
-  towns.forEach((t, idx) => {
+  data.towns.forEach((t, idx) => {
     const [wx, wy] = t.pos;
     const svgY = SIZE - wy;
     const r = townRadius(t.value);
@@ -574,8 +654,6 @@ function renderTowns(towns) {
     circle.setAttribute('r', r);
 
     grp.appendChild(circle);
-
-    // Click to inspect
     grp.addEventListener('click', (evt) => {
       evt.stopPropagation();
       selectTown(t, idx, grp);
@@ -585,13 +663,13 @@ function renderTowns(towns) {
   });
 }
 
-function renderLabels(towns) {
+function renderLabels() {
   const g = document.getElementById('g-labels');
   g.innerHTML = '';
-  const show = document.getElementById('show-labels').checked;
-  if (!show) return;
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-labels').checked) return;
 
-  towns.forEach(t => {
+  data.towns.forEach(t => {
     const [wx, wy] = t.pos;
     const svgY = SIZE - wy;
     const r = townRadius(t.value);
@@ -599,10 +677,8 @@ function renderLabels(towns) {
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('class', 'town-label');
     text.setAttribute('x', wx);
-    // Place label above the circle (offset up in SVG space = smaller Y)
     text.setAttribute('y', svgY - r - 60);
     text.setAttribute('text-anchor', 'middle');
-    // Font size in world metres — scales with zoom. ~320m at normal zoom is ~10px.
     text.setAttribute('font-size', '260');
     text.setAttribute('fill', 'var(--bone)');
     text.setAttribute('opacity', '0.85');
@@ -613,10 +689,64 @@ function renderLabels(towns) {
 }
 
 // ============================================================
-// SELECTION
+// WASP LAYER VISIBILITY TOGGLE (show/hide controls for non-WASP maps)
+// ============================================================
+function updateWaspControlVisibility() {
+  const hasWasp = WASP_MAPS.has(activeMap);
+  ['wasp-layer-row', 'wasp-rings-row', 'wasp-spawns-row', 'wasp-airports-row'].forEach(id => {
+    document.getElementById(id).style.opacity = hasWasp ? '1' : '0.35';
+  });
+}
+
+// ============================================================
+// RENDER ALL LAYERS
+// ============================================================
+function renderAll() {
+  renderGrid();
+  renderLocations();
+  renderRings();
+  renderAirports();
+  renderSpawns();
+  renderTowns();
+  renderLabels();
+}
+
+// ============================================================
+// SWITCH MAP
+// ============================================================
+function switchMap(mapKey) {
+  if (!mapsData || !mapsData[mapKey]) return;
+  activeMap = mapKey;
+  SIZE = mapsData[mapKey].size;
+
+  // Update brand bar
+  document.getElementById('bar-map-name').textContent = mapsData[mapKey].name;
+
+  // Update stats
+  const waspData = getWaspData();
+  document.getElementById('stat-towns').textContent = waspData ? waspData.towns.length : '–';
+  document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '–';
+  document.getElementById('stat-locs').textContent   = mapsData[mapKey].locations.length;
+  document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
+
+  // Clear inspector
+  selectedTown = null;
+  document.getElementById('inspector-body').innerHTML =
+    '<div class="inspector-empty">No town selected.<br>Click any WASP town marker on the map to inspect its properties.</div>';
+
+  // Clip rect
+  document.getElementById('map-clip-rect').setAttribute('width', SIZE);
+  document.getElementById('map-clip-rect').setAttribute('setAttribute', SIZE);
+
+  updateWaspControlVisibility();
+  fitMap();
+  renderAll();
+}
+
+// ============================================================
+// INSPECTOR
 // ============================================================
 function selectTown(t, idx, grpEl) {
-  // Deselect old
   document.querySelectorAll('.town-marker.sel').forEach(el => el.classList.remove('sel'));
   selectedTown = t;
   grpEl.classList.add('sel');
@@ -641,26 +771,14 @@ function renderInspector(t) {
 }
 
 // ============================================================
-// LAYER TOGGLES
-// ============================================================
-function bindToggle(id, renderFn) {
-  document.getElementById(id).addEventListener('change', () => {
-    if (!mapData) return;
-    const data = mapData[activeMap];
-    renderFn(data);
-  });
-}
-
-// ============================================================
 // PAN / ZOOM
 // ============================================================
 let isPanning = false;
-let panStart = { x: 0, y: 0 };
-let camStart = { tx: 0, ty: 0 };
+let panStart  = { x: 0, y: 0 };
+let camStart  = { tx: 0, ty: 0 };
 
 svg.addEventListener('mousedown', evt => {
   if (evt.button !== 0) return;
-  // Only pan on empty space (not on town markers — they have their own click)
   isPanning = true;
   panStart = { x: evt.clientX, y: evt.clientY };
   camStart = { tx: cam.tx, ty: cam.ty };
@@ -669,9 +787,8 @@ svg.addEventListener('mousedown', evt => {
 
 window.addEventListener('mousemove', evt => {
   if (!isPanning) {
-    // Update coords badge
     const sc = svgCoords(evt);
-    const w = svgToWorld(sc.x, sc.y);
+    const w  = svgToWorld(sc.x, sc.y);
     const cb = document.getElementById('coords-badge');
     if (w.x >= 0 && w.x <= SIZE && w.y >= 0 && w.y <= SIZE) {
       cb.textContent = `x: ${w.x.toFixed(0)}  y: ${w.y.toFixed(0)}`;
@@ -692,13 +809,10 @@ window.addEventListener('mouseup', () => {
   svg.classList.remove('panning');
 });
 
-// Zoom with scroll wheel, centred on cursor
 svg.addEventListener('wheel', evt => {
   evt.preventDefault();
   const factor = evt.deltaY < 0 ? 1.12 : 1 / 1.12;
   const sc = svgCoords(evt);
-
-  // Zoom about the cursor point
   cam.tx = sc.x - (sc.x - cam.tx) * factor;
   cam.ty = sc.y - (sc.y - cam.ty) * factor;
   cam.s *= factor;
@@ -730,79 +844,109 @@ document.getElementById('btn-zoom-out').addEventListener('click', () => {
 document.getElementById('btn-zoom-fit').addEventListener('click', fitMap);
 
 // ============================================================
-// MAP SWITCHER
+// MAP DROPDOWN
 // ============================================================
-document.getElementById('map-switcher').addEventListener('click', evt => {
-  const btn = evt.target.closest('button[data-map]');
-  if (!btn) return;
-  const name = btn.dataset.map;
-  if (name === activeMap) return;
-  activeMap = name;
-  document.querySelectorAll('#map-switcher button').forEach(b => b.classList.toggle('on', b.dataset.map === name));
-  selectedTown = null;
-  document.getElementById('inspector-body').innerHTML = '<div class="inspector-empty">No town selected.<br>Click any town marker on the map to inspect its properties.</div>';
-  // Update SIZE before fitMap
-  if (mapData && mapData[name]) SIZE = mapData[name].size;
-  fitMap();
-  renderMap(name);
+function populateMapDropdown() {
+  const sel = document.getElementById('map-select');
+  sel.innerHTML = '';
+
+  // Desired display order
+  const ORDER = [
+    'chernarus', 'takistan', 'zargabad', 'utes',
+    'shapur_baf', 'provinggrounds_pmc', 'desert_e'
+  ];
+
+  ORDER.forEach(key => {
+    if (!mapsData[key]) return;
+    const d = mapsData[key];
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = `${d.name} — ${(d.size / 1000).toFixed(0)} km`;
+    if (key === activeMap) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+document.getElementById('map-select').addEventListener('change', evt => {
+  switchMap(evt.target.value);
 });
 
 // ============================================================
 // LAYER TOGGLE BINDINGS
 // ============================================================
-document.getElementById('show-towns').addEventListener('change', () => {
-  if (!mapData) return;
-  renderTowns(mapData[activeMap].towns);
+['show-towns', 'show-rings', 'show-spawns', 'show-airports', 'show-labels'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (!mapsData) return;
+    renderRings();
+    renderAirports();
+    renderSpawns();
+    renderTowns();
+    renderLabels();
+  });
 });
-document.getElementById('show-rings').addEventListener('change', () => {
-  if (!mapData) return;
-  renderRings(mapData[activeMap].towns);
-});
-document.getElementById('show-spawns').addEventListener('change', () => {
-  if (!mapData) return;
-  renderSpawns(mapData[activeMap].spawns);
-});
-document.getElementById('show-airports').addEventListener('change', () => {
-  if (!mapData) return;
-  renderAirports(mapData[activeMap].airports);
-});
+
 document.getElementById('show-grid').addEventListener('change', () => {
-  if (!mapData) return;
-  if (document.getElementById('show-grid').checked) {
-    renderGrid();
-  } else {
-    document.getElementById('g-grid').innerHTML = '';
-  }
+  if (!mapsData) return;
+  renderGrid();
 });
-document.getElementById('show-labels').addEventListener('change', () => {
-  if (!mapData) return;
-  renderLabels(mapData[activeMap].towns);
+
+document.getElementById('show-locs-settlements').addEventListener('change', () => {
+  if (!mapsData) return;
+  renderLocations();
+});
+
+document.getElementById('show-locs-minor').addEventListener('change', () => {
+  if (!mapsData) return;
+  renderLocations();
 });
 
 // ============================================================
-// INIT
+// INIT — load both data files, then render
 // ============================================================
 async function init() {
   try {
-    const resp = await fetch('assets/data/seed-towns.json');
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    mapData = await resp.json();
-    activeMap = 'chernarus';
-    SIZE = mapData.chernarus.size;
+    // Load both files in parallel; seed-towns is optional (may fail on non-WASP setup)
+    const [mapsResp, townsResp] = await Promise.allSettled([
+      fetch('assets/data/maps.json'),
+      fetch('assets/data/seed-towns.json'),
+    ]);
 
-    // Wait for stage to have dimensions
+    if (mapsResp.status !== 'fulfilled' || !mapsResp.value.ok) {
+      throw new Error('Failed to load maps.json');
+    }
+    mapsData = await mapsResp.value.json();
+
+    if (townsResp.status === 'fulfilled' && townsResp.value.ok) {
+      townsData = await townsResp.value.json();
+    } else {
+      console.warn('seed-towns.json not available — WASP town layer disabled');
+      townsData = null;
+    }
+
+    activeMap = 'chernarus';
+    SIZE = mapsData.chernarus.size;
+
+    populateMapDropdown();
+    updateWaspControlVisibility();
+
     requestAnimationFrame(() => {
       fitMap();
-      renderMap(activeMap);
+      // Update initial stats
+      const waspData = getWaspData();
+      document.getElementById('stat-towns').textContent = waspData ? waspData.towns.length : '–';
+      document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '–';
+      document.getElementById('stat-locs').textContent   = mapsData.chernarus.locations.length;
+      document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
+      renderAll();
     });
   } catch (err) {
-    console.error('Failed to load seed-towns.json:', err);
+    console.error('Init failed:', err);
   }
 }
 
 // Re-fit on resize
 const ro = new ResizeObserver(() => {
-  if (!mapData) return;
+  if (!mapsData) return;
   fitMap();
 });
 ro.observe(document.getElementById('stage'));
