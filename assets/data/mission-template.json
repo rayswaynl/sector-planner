@@ -1,0 +1,1658 @@
+{
+  "header": {
+    "version": 11,
+    "addOns": {
+      "world": [
+        "chernarus"
+      ],
+      "base": [
+        "ca_modules_functions",
+        "ca_highcommand",
+        "warfare2vehicles"
+      ],
+      "faction": [
+        "cacharacters2",
+        "ca_animals2_chicken",
+        "ca_communityconfigurationproject_e",
+        "CorePatch_CCP_70799"
+      ]
+    },
+    "addOnsAuto": {
+      "world": [
+        "chernarus"
+      ],
+      "base": [
+        "ca_modules_functions"
+      ],
+      "faction": [
+        "cacharacters2",
+        "CorePatch_CCP_70799"
+      ]
+    },
+    "randomSeed": 10034581,
+    "intel": {
+      "briefingName": "Miksuu Test Server",
+      "briefingDescription": "by Benny and Awesome&WASP",
+      "resistanceWest": 0,
+      "startWeather": 0,
+      "forecastWeather": 0,
+      "year": 2016,
+      "month": 12,
+      "day": 28,
+      "hour": 8,
+      "minute": 0
+    },
+    "intro": {
+      "addOns": {
+        "world": [
+          "chernarus"
+        ],
+        "base": [],
+        "faction": []
+      },
+      "addOnsAuto": {
+        "world": [
+          "chernarus"
+        ],
+        "base": [],
+        "faction": []
+      },
+      "randomSeed": 13267190,
+      "intel": {
+        "startWeather": 0.25,
+        "forecastWeather": 0.25,
+        "year": 2008,
+        "month": 10,
+        "day": 11,
+        "hour": 9,
+        "minute": 20
+      }
+    },
+    "outroWin": {
+      "addOns": {
+        "world": [
+          "chernarus"
+        ],
+        "base": [],
+        "faction": []
+      },
+      "addOnsAuto": {
+        "world": [
+          "chernarus"
+        ],
+        "base": [],
+        "faction": []
+      },
+      "randomSeed": 10462969,
+      "intel": {
+        "startWeather": 0.25,
+        "forecastWeather": 0.25,
+        "year": 2008,
+        "month": 10,
+        "day": 11,
+        "hour": 9,
+        "minute": 20
+      }
+    },
+    "outroLoose": {
+      "addOns": {
+        "world": [
+          "chernarus"
+        ],
+        "base": [],
+        "faction": []
+      },
+      "addOnsAuto": {
+        "world": [
+          "chernarus"
+        ],
+        "base": [],
+        "faction": []
+      },
+      "randomSeed": 12603217,
+      "intel": {
+        "startWeather": 0.25,
+        "forecastWeather": 0.25,
+        "year": 2008,
+        "month": 10,
+        "day": 11,
+        "hour": 9,
+        "minute": 20
+      }
+    }
+  },
+  "slots": {
+    "west": [
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Miles",
+        "position": [
+          2259.1614,
+          512.457,
+          15296.355
+        ],
+        "id": 229,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -3.1491,
+          -0.1815,
+          1.0006
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Miles",
+        "position": [
+          2259.1116,
+          512.6393,
+          15297.525
+        ],
+        "id": 230,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -3.1989,
+          0.0008,
+          2.1706
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_TL",
+        "position": [
+          2260.5251,
+          512.8022,
+          15297.613
+        ],
+        "id": 231,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -1.7854,
+          0.1637,
+          2.2586
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_TL",
+        "position": [
+          2260.6396,
+          512.6513,
+          15296.375
+        ],
+        "id": 232,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -1.6709,
+          0.0128,
+          1.0206
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_SoldierS_Sniper",
+        "position": [
+          2261.9004,
+          512.9145,
+          15297.685
+        ],
+        "id": 233,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Sniper (Spot marks on map, Lockpick, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -0.4101,
+          0.276,
+          2.3306
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_SoldierS_Sniper",
+        "position": [
+          2261.9783,
+          512.7822,
+          15296.405
+        ],
+        "id": 234,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Sniper (Spot marks on map, Lockpick, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -0.3322,
+          0.1437,
+          1.0506
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_Soldier_TL",
+        "position": [
+          2263.1621,
+          513.0119,
+          15297.698
+        ],
+        "id": 235,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          0.8516,
+          0.3734,
+          2.3436
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_Soldier_TL",
+        "position": [
+          2263.2217,
+          512.3585,
+          15292.488
+        ],
+        "id": 236,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          0.9112,
+          -0.28,
+          -2.8664
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_Soldier_TL",
+        "position": [
+          2263.2664,
+          512.4934,
+          15293.29
+        ],
+        "id": 237,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          0.9559,
+          -0.1451,
+          -2.0644
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_TL",
+        "position": [
+          2260.5896,
+          512.15,
+          15293.308
+        ],
+        "id": 238,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -1.7209,
+          -0.4885,
+          -2.0464
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_Soldier_TL",
+        "position": [
+          2263.2493,
+          512.903,
+          15296.629
+        ],
+        "id": 239,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          0.9388,
+          0.2645,
+          1.2746
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Corpsman",
+        "position": [
+          2265.4153,
+          513.0877,
+          15296.825
+        ],
+        "id": 240,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          3.1048,
+          0.4492,
+          1.4706
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Corpsman",
+        "position": [
+          2265.4199,
+          513.1812,
+          15297.688
+        ],
+        "id": 241,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          3.1094,
+          0.5427,
+          2.3336
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Corpsman",
+        "position": [
+          2265.4893,
+          512.9774,
+          15295.754
+        ],
+        "id": 242,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          3.1788,
+          0.3389,
+          0.3996
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Corpsman",
+        "position": [
+          2265.6299,
+          512.9069,
+          15295.005
+        ],
+        "id": 243,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          3.3194,
+          0.2684,
+          -0.3494
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_TL",
+        "position": [
+          2260.5999,
+          512.2895,
+          15294.164
+        ],
+        "id": 257,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -1.7106,
+          -0.349,
+          -1.1904
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_SoldierS_Sniper",
+        "position": [
+          2261.9368,
+          512.6583,
+          15295.378
+        ],
+        "id": 258,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Sniper (Spot marks on map, Lockpick, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -0.3737,
+          0.0198,
+          0.0236
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Miles",
+        "position": [
+          2259.1794,
+          512.2764,
+          15295.221
+        ],
+        "id": 259,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -3.1311,
+          -0.3621,
+          -0.1334
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Corpsman",
+        "position": [
+          2265.6404,
+          512.8111,
+          15294.111
+        ],
+        "id": 260,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          3.3299,
+          0.1726,
+          -1.2434
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_Soldier_TL",
+        "position": [
+          2263.2229,
+          512.8026,
+          15295.718
+        ],
+        "id": 261,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          0.9124,
+          0.1641,
+          0.3636
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_Soldier_TL",
+        "position": [
+          2263.2385,
+          512.7192,
+          15294.935
+        ],
+        "id": 270,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          0.928,
+          0.0807,
+          -0.4194
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_Soldier_TL",
+        "position": [
+          2263.2842,
+          512.636,
+          15294.16
+        ],
+        "id": 273,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          0.9737,
+          -0.0025,
+          -1.1944
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_TL",
+        "position": [
+          2260.572,
+          512.4745,
+          15295.333
+        ],
+        "id": 274,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -1.7385,
+          -0.164,
+          -0.0214
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Corpsman",
+        "position": [
+          2265.6147,
+          512.7286,
+          15293.364
+        ],
+        "id": 283,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          3.3042,
+          0.0901,
+          -1.9904
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "USMC_SoldierS_Sniper",
+        "position": [
+          2261.9365,
+          512.4811,
+          15294.28
+        ],
+        "id": 285,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Sniper (Spot marks on map, Lockpick, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -0.374,
+          -0.1574,
+          -1.0744
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Miles",
+        "position": [
+          2259.1797,
+          512.0885,
+          15294.057
+        ],
+        "id": 286,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -3.1308,
+          -0.55,
+          -1.2974
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "WEST",
+        "vehicleClass": "FR_Miles",
+        "position": [
+          2259.2188,
+          511.9561,
+          15293.204
+        ],
+        "id": 287,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          255
+        ],
+        "offset": [
+          -3.0917,
+          -0.6824,
+          -2.1504
+        ]
+      }
+    ],
+    "east": [
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier1",
+        "position": [
+          33.2913,
+          5.6112,
+          1595.3229
+        ],
+        "id": 244,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -3.0269,
+          -0.0452,
+          2.4313
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier1",
+        "position": [
+          33.2073,
+          5.6069,
+          1594.2554
+        ],
+        "id": 245,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -3.1109,
+          -0.0495,
+          1.3638
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_TL",
+        "position": [
+          35.2205,
+          5.642,
+          1594.3057
+        ],
+        "id": 246,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -1.0977,
+          -0.0144,
+          1.4141
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_TL",
+        "position": [
+          35.0215,
+          5.6353,
+          1593.1036
+        ],
+        "id": 247,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -1.2967,
+          -0.0211,
+          0.212
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RU_Soldier_Sniper",
+        "position": [
+          37.3858,
+          5.6767,
+          1593.239
+        ],
+        "id": 248,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Sniper (Spot marks on map, Lockpick, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          1.0676,
+          0.0203,
+          0.3474
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "Ins_Soldier_CO",
+        "position": [
+          38.7717,
+          5.6876,
+          1589.5959
+        ],
+        "id": 249,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          2.4535,
+          0.0312,
+          -3.2957
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "Ins_Soldier_CO",
+        "position": [
+          38.6997,
+          5.6917,
+          1591.527
+        ],
+        "id": 250,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          2.3815,
+          0.0353,
+          -1.3646
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_TL",
+        "position": [
+          35.2343,
+          5.6447,
+          1595.234
+        ],
+        "id": 251,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -1.0839,
+          -0.0117,
+          2.3424
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_Medic",
+        "position": [
+          36.5835,
+          5.6597,
+          1592.0947
+        ],
+        "id": 252,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          0.2653,
+          0.0033,
+          -0.7969
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_Medic",
+        "position": [
+          36.3811,
+          5.6644,
+          1595.1875
+        ],
+        "id": 253,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          0.0629,
+          0.008,
+          2.2959
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_Medic",
+        "position": [
+          36.5703,
+          5.657,
+          1591.1727
+        ],
+        "id": 254,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          0.2521,
+          0.0006,
+          -1.7189
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier1",
+        "position": [
+          33.1284,
+          5.603,
+          1593.2748
+        ],
+        "id": 262,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -3.1898,
+          -0.0534,
+          0.3832
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RU_Soldier_Sniper",
+        "position": [
+          37.4368,
+          5.6802,
+          1594.2478
+        ],
+        "id": 263,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Sniper (Spot marks on map, Lockpick, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          1.1186,
+          0.0238,
+          1.3562
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_Medic",
+        "position": [
+          36.2944,
+          5.6603,
+          1594.2137
+        ],
+        "id": 264,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -0.0238,
+          0.0039,
+          1.3221
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_Medic",
+        "position": [
+          36.4038,
+          5.6594,
+          1593.1549
+        ],
+        "id": 265,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          0.0856,
+          0.003,
+          0.2633
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RU_Soldier_Sniper",
+        "position": [
+          37.4634,
+          5.683,
+          1595.1086
+        ],
+        "id": 266,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Sniper (Spot marks on map, Lockpick, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          1.1452,
+          0.0266,
+          2.217
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "Ins_Soldier_CO",
+        "position": [
+          38.5389,
+          5.694,
+          1593.2811
+        ],
+        "id": 267,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          2.2207,
+          0.0376,
+          0.3895
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "Ins_Soldier_CO",
+        "position": [
+          38.6226,
+          5.693,
+          1592.4479
+        ],
+        "id": 269,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          2.3044,
+          0.0366,
+          -0.4437
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_TL",
+        "position": [
+          35.1116,
+          5.6343,
+          1592.1195
+        ],
+        "id": 271,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -1.2066,
+          -0.0221,
+          -0.7721
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "Ins_Soldier_CO",
+        "position": [
+          38.6787,
+          5.689,
+          1590.6324
+        ],
+        "id": 272,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          2.3605,
+          0.0326,
+          -2.2592
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "Ins_Soldier_CO",
+        "position": [
+          38.5289,
+          5.6986,
+          1595.0546
+        ],
+        "id": 275,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          2.2107,
+          0.0422,
+          2.163
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "Ins_Soldier_CO",
+        "position": [
+          38.6548,
+          5.6981,
+          1594.1757
+        ],
+        "id": 276,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Engineer (Repair, Salvage, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          2.3366,
+          0.0417,
+          1.2841
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_TL",
+        "position": [
+          35.0328,
+          5.6303,
+          1591.139
+        ],
+        "id": 277,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Support (Supply run)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -1.2854,
+          -0.0261,
+          -1.7526
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier_Medic",
+        "position": [
+          36.5121,
+          5.651,
+          1589.2822
+        ],
+        "id": 284,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this; this setVariable [\"task\",\"medic\"];",
+        "description": "Medic (Fast heal, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          0.1939,
+          -0.0054,
+          -3.6094
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RU_Soldier_Sniper",
+        "position": [
+          37.4827,
+          5.6754,
+          1592.1532
+        ],
+        "id": 288,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Sniper (Spot marks on map, Lockpick, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          1.1645,
+          0.019,
+          -0.7384
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier1",
+        "position": [
+          33.1478,
+          5.5995,
+          1591.8595
+        ],
+        "id": 289,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -3.1704,
+          -0.0569,
+          -1.0321
+        ]
+      },
+      {
+        "kind": "slot",
+        "side": "EAST",
+        "vehicleClass": "RUS_Soldier1",
+        "position": [
+          33.1866,
+          5.5976,
+          1590.8907
+        ],
+        "id": 290,
+        "leader": true,
+        "rank": "LIEUTENANT",
+        "init": "removeAllWeapons this",
+        "description": "Soldier (Double team size, Camps restore)",
+        "forceHeadlessClient": false,
+        "synchronizations": [
+          256
+        ],
+        "offset": [
+          -3.1316,
+          -0.0588,
+          -2.0009
+        ]
+      }
+    ],
+    "civ": [
+      {
+        "kind": "slot",
+        "side": "CIV",
+        "vehicleClass": "Functionary1",
+        "position": [
+          1927.2078,
+          544.7598,
+          15282.436
+        ],
+        "id": 268,
+        "leader": true,
+        "rank": null,
+        "init": "this allowdamage false;",
+        "description": "Headless Client",
+        "forceHeadlessClient": true,
+        "synchronizations": [],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ]
+  },
+  "stagingClusters": {
+    "west": {
+      "anchor": [
+        2262.3105,
+        512.6385,
+        15295.3544
+      ]
+    },
+    "east": {
+      "anchor": [
+        36.3182,
+        5.6564,
+        1592.8916
+      ]
+    },
+    "civ": {
+      "anchor": [
+        1927.2078,
+        544.7598,
+        15282.436
+      ]
+    }
+  },
+  "owners": {
+    "west": {
+      "kind": "owner",
+      "side": "WEST",
+      "vehicle": "LocationLogicOwnerWest",
+      "text": "WFBE_L_BLU",
+      "position": [
+        2263.1191,
+        514.9087,
+        15309.809
+      ],
+      "id": 255,
+      "synchronizations": [
+        229,
+        239,
+        230,
+        231,
+        240,
+        241,
+        232,
+        233,
+        242,
+        243,
+        234,
+        235,
+        236,
+        237,
+        238,
+        257,
+        258,
+        259,
+        260,
+        261,
+        270,
+        274,
+        273,
+        283,
+        285,
+        286,
+        287
+      ]
+    },
+    "east": {
+      "kind": "owner",
+      "side": "EAST",
+      "vehicle": "LocationLogicOwnerEast",
+      "text": "WFBE_L_OPF",
+      "position": [
+        37.6615,
+        6.4857,
+        1607.8727
+      ],
+      "id": 256,
+      "synchronizations": [
+        244,
+        251,
+        245,
+        246,
+        252,
+        253,
+        247,
+        248,
+        254,
+        249,
+        250,
+        262,
+        264,
+        265,
+        263,
+        266,
+        267,
+        269,
+        272,
+        271,
+        275,
+        276,
+        277,
+        284,
+        288,
+        289,
+        290
+      ]
+    }
+  },
+  "wfLogic": {
+    "kind": "wf_logic",
+    "position": [
+      1916.9998,
+      0.1286,
+      54.7467
+    ],
+    "id": 228,
+    "init_tail": "this enableSimulation false; nullReturn = [this] ExecVM"
+  },
+  "utility": [
+    {
+      "kind": "utility",
+      "vehicle": "Logic",
+      "text": "RCoin",
+      "position": [
+        1946.9515,
+        0.0739,
+        54.8917
+      ],
+      "id": 1
+    },
+    {
+      "kind": "utility",
+      "vehicle": "Logic",
+      "text": "MCoin",
+      "position": [
+        1931.5111,
+        0.2722,
+        54.8917
+      ],
+      "id": 2
+    },
+    {
+      "kind": "utility",
+      "vehicle": "FunctionsManager",
+      "text": "FunctionsManager",
+      "position": [
+        1961.35,
+        0.2043,
+        68.3435
+      ],
+      "id": 3
+    }
+  ],
+  "markers": [
+    {
+      "position": [
+        15491.06,
+        276.3166,
+        15198.396
+      ],
+      "name": "WestTempRespawnMarker",
+      "type": "Empty"
+    },
+    {
+      "position": [
+        15404.811,
+        268.3505,
+        15293.424
+      ],
+      "name": "EastTempRespawnMarker",
+      "type": "Empty"
+    },
+    {
+      "position": [
+        15462.453,
+        273.3499,
+        15264.496
+      ],
+      "name": "GuerTempRespawnMarker",
+      "type": "Empty"
+    },
+    {
+      "position": [
+        15440.639,
+        280.5891,
+        15237.345
+      ],
+      "name": "DEADSPAWNS",
+      "type": "mil_dot",
+      "text": "DEADSPAWNS, DO NOT ENTER!!!",
+      "colorName": "ColorRed",
+      "a": 4.0,
+      "b": 4.0
+    },
+    {
+      "position": [
+        15439.297,
+        280.6408,
+        15237.346
+      ],
+      "name": "DEADSPAWNS_1",
+      "type": "mil_dot",
+      "text": "DEADSPAWNS, DO NOT ENTER!!!",
+      "colorName": "ColorRed",
+      "markerType": "ELLIPSE",
+      "a": 80.0,
+      "b": 80.0
+    }
+  ]
+}
