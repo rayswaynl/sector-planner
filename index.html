@@ -243,6 +243,19 @@
   ::-webkit-scrollbar-thumb{background:var(--steel2);border-radius:4px}
   ::-webkit-scrollbar-track{background:transparent}
 
+  /* ---- Map texture layer controls ---- */
+  .tex-slider-row{display:flex;align-items:center;gap:7px;margin:4px 0 0;padding-left:20px}
+  .tex-slider-row input[type=range]{flex:1;accent-color:var(--orange);height:4px;cursor:pointer}
+  .tex-slider-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b939c;width:28px;text-align:right}
+  .zarg-badge{
+    display:inline-block;font-size:10px;font-family:'JetBrains Mono',monospace;
+    background:rgba(185,95,42,.22);border:1px solid var(--orange-deep);color:var(--orange);
+    border-radius:4px;padding:2px 7px;margin-top:4px;line-height:1.4
+  }
+
+  /* ---- Map source disclaimer (footer) ---- */
+  .map-disclaimer{font-size:10px;color:#46505b;line-height:1.5;margin-top:6px}
+
   /* ---- Mission I/O panel ---- */
   .io-panel{border-top:1px solid var(--line);grid-column:3;display:flex;flex-direction:column;min-height:0;max-height:320px;
     background:var(--steel);border-left:1px solid var(--line)}
@@ -350,6 +363,16 @@
       <div class="toggle-row"><input type="checkbox" id="show-locs-settlements" checked> Locations: settlements</div>
       <div class="toggle-row"><input type="checkbox" id="show-locs-minor"> Locations: minor</div>
 
+      <!-- Map texture -->
+      <div class="toggle-row" id="tex-toggle-row"><input type="checkbox" id="show-map-texture" checked> Map texture</div>
+      <div class="tex-slider-row" id="tex-slider-row">
+        <input type="range" id="tex-opacity" min="0" max="100" value="85">
+        <span class="tex-slider-val" id="tex-opacity-val">85%</span>
+      </div>
+      <div id="zarg-badge-wrap" style="display:none;padding-left:20px">
+        <span class="zarg-badge">&#9888; approximate alignment</span>
+      </div>
+
       <!-- General -->
       <div class="toggle-row"><input type="checkbox" id="show-grid" checked> Coordinate grid</div>
       <div class="toggle-row"><input type="checkbox" id="show-labels" checked> Town labels</div>
@@ -395,6 +418,11 @@
         Drag WASP town to reposition<br>
         Click a WASP town to inspect &amp; edit<br>
         Ref locations = CfgWorlds (promote in Add mode)
+      </div>
+
+      <div class="map-disclaimer">
+        Map textures: Bohemia Interactive terrain renders.<br>
+        Non-commercial fan tool — all rights reserved by BI.
       </div>
 
       <div class="divider"></div>
@@ -450,6 +478,8 @@
       </defs>
       <!-- Pan/zoom group — everything lives inside this -->
       <g id="pz-root">
+        <!-- Map texture image (bottom-most layer) -->
+        <g id="g-map-texture"></g>
         <!-- Grid group -->
         <g id="g-grid"></g>
         <!-- Reference locations — settlements (below WASP towns) -->
@@ -670,6 +700,63 @@ function renderGrid() {
   border.setAttribute('y', 0);
   border.setAttribute('width', SIZE);
   border.setAttribute('height', SIZE);
+}
+
+// ============================================================
+// MAP TEXTURE LAYER
+// ============================================================
+
+// Per-world texture filename. Worlds NOT listed here → grid-only fallback.
+const MAP_TEXTURES = {
+  chernarus:  'chernarus.jpg',
+  takistan:   'takistan.png',
+  utes:       'utes.png',
+  shapur_baf: 'shapur_baf.png',
+  zargabad:   'zargabad.jpg',
+};
+
+// Worlds with approximate/rough alignment — show a warning badge
+const APPROX_ALIGN = new Set(['zargabad']);
+
+function renderMapTexture() {
+  const g = document.getElementById('g-map-texture');
+  g.innerHTML = '';
+
+  const texFile = MAP_TEXTURES[activeMap];
+  const showTex = document.getElementById('show-map-texture').checked;
+  const opacity = parseInt(document.getElementById('tex-opacity').value, 10) / 100;
+
+  // Show/hide badge and slider row based on whether a texture exists for this map
+  const hasTex = !!texFile;
+  document.getElementById('tex-toggle-row').style.opacity  = hasTex ? '' : '0.4';
+  document.getElementById('tex-slider-row').style.display  = (hasTex && showTex) ? '' : 'none';
+  document.getElementById('zarg-badge-wrap').style.display =
+    (hasTex && showTex && APPROX_ALIGN.has(activeMap)) ? '' : 'none';
+
+  // Dim the grid when texture is visible
+  const gridEl = document.getElementById('g-grid');
+  if (hasTex && showTex) {
+    gridEl.style.opacity = '0.28';
+  } else {
+    gridEl.style.opacity = '';
+  }
+
+  if (!hasTex || !showTex) return;
+
+  // Draw <image> spanning the full world extent (0..SIZE x 0..SIZE), Y-flipped.
+  // In pz-root local space: x=0, y=0 is the SVG top-left which corresponds to worldY=SIZE (north),
+  // so the image goes from svgY=0 (north) to svgY=SIZE (south) — exactly correct for the flip.
+  const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+  img.setAttribute('x', 0);
+  img.setAttribute('y', 0);
+  img.setAttribute('width', SIZE);
+  img.setAttribute('height', SIZE);
+  img.setAttribute('href', `assets/maps/${texFile}`);
+  img.setAttribute('preserveAspectRatio', 'none');
+  img.setAttribute('opacity', opacity);
+  // Graceful 404 fallback: if load fails, hide the element silently
+  img.addEventListener('error', () => { img.remove(); });
+  g.appendChild(img);
 }
 
 // ============================================================
@@ -1198,6 +1285,7 @@ function updateWaspControlVisibility() {
 // RENDER ALL LAYERS
 // ============================================================
 function renderAll() {
+  renderMapTexture();
   renderGrid();
   renderLocations();
   renderRings();
@@ -2382,6 +2470,18 @@ document.getElementById('map-select').addEventListener('change', evt => {
     renderTowns();
     renderLabels();
   });
+});
+
+document.getElementById('show-map-texture').addEventListener('change', () => {
+  if (!mapsData) return;
+  renderMapTexture();
+});
+
+document.getElementById('tex-opacity').addEventListener('input', () => {
+  const val = document.getElementById('tex-opacity').value;
+  document.getElementById('tex-opacity-val').textContent = val + '%';
+  if (!mapsData) return;
+  renderMapTexture();
 });
 
 document.getElementById('show-grid').addEventListener('change', () => {
