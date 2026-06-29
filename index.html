@@ -401,6 +401,40 @@
   .insp-side-select:focus{border-color:var(--orange)}
   /* Capture estimate display in inspector */
   .capture-est{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--orange)}
+
+  /* ---- Generate Mission panel ---- */
+  .gen-panel{border-top:1px solid var(--line);padding:12px 14px;flex:0 0 auto}
+  .gen-panel .gen-title{font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.5px;color:var(--bone);margin-bottom:10px}
+  .gen-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .gen-row .gen-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad;flex:0 0 46px}
+  .gen-select{
+    flex:1;appearance:none;background:var(--gunmetal);border:1px solid var(--line);
+    border-radius:5px;color:var(--bone);padding:6px 24px 6px 8px;font-size:11px;
+    font-family:'JetBrains Mono',monospace;cursor:pointer;outline:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23D9763C'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 7px center
+  }
+  .gen-select:focus{border-color:var(--orange)}
+  .gen-btn{
+    display:flex;align-items:center;justify-content:center;gap:7px;width:100%;
+    background:var(--olive);border:1px solid #7a8a4a;border-radius:5px;
+    padding:9px 12px;cursor:pointer;font-size:12px;font-weight:600;
+    color:var(--chalk);font-family:Oswald,sans-serif;letter-spacing:.5px;margin-top:4px
+  }
+  .gen-btn:hover:not(:disabled){background:#6f7c3f;border-color:#9aaa5a}
+  .gen-btn:disabled{opacity:.4;cursor:not-allowed}
+  .gen-result{
+    margin-top:8px;padding:8px 10px;border-radius:5px;font-size:11px;
+    font-family:'JetBrains Mono',monospace;line-height:1.5;display:none
+  }
+  .gen-result.ok{background:rgba(92,101,54,.25);color:#b8c480;border:1px solid #5c6536}
+  .gen-result.warn{background:rgba(185,95,42,.18);color:#e0a060;border:1px solid var(--orange-deep)}
+  .gen-result.err{background:rgba(192,57,43,.18);color:#e07060;border:1px solid var(--danger)}
+  .gen-folder{
+    margin-top:5px;padding:5px 7px;background:var(--gunmetal);border:1px solid var(--line);
+    border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;
+    color:var(--orange);word-break:break-all;display:none
+  }
 </style>
 </head>
 <body>
@@ -792,6 +826,41 @@
       <!-- Change-list output textarea -->
       <span class="io-change-label" id="io-change-label" style="display:none">Change-list (paste into SQM or apply manually)</span>
       <textarea class="io-textarea" id="io-change-output" style="display:none" readonly></textarea>
+
+      <!-- ====== Generate Mission panel ====== -->
+      <div class="gen-panel">
+        <div class="gen-title">&#9881; Generate Mission</div>
+
+        <div class="gen-row">
+          <span class="gen-label">WEST</span>
+          <select class="gen-select" id="gen-west-faction">
+            <option value="CDF">CDF — Chernarussian Defence Force</option>
+            <option value="US">US Army</option>
+            <option value="USMC" selected>USMC</option>
+          </select>
+        </div>
+
+        <div class="gen-row">
+          <span class="gen-label">EAST</span>
+          <select class="gen-select" id="gen-east-faction">
+            <option value="INS">INS — Insurgents</option>
+            <option value="RU" selected>RU — Russian Armed Forces</option>
+            <option value="TKA">TKA — Takistani Army</option>
+          </select>
+        </div>
+
+        <div class="gen-row" style="margin-bottom:0">
+          <span class="gen-label" style="color:#5a6470">MAP</span>
+          <span id="gen-map-display" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--bone)">chernarus</span>
+        </div>
+
+        <button class="gen-btn" id="btn-generate-mission">
+          &#8659; Generate + Download mission.sqm
+        </button>
+
+        <div class="gen-result" id="gen-result"></div>
+        <div class="gen-folder" id="gen-folder"></div>
+      </div>
     </div>
   </div>
 
@@ -1673,6 +1742,9 @@ function switchMap(mapKey) {
   document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '0';
   document.getElementById('stat-locs').textContent   = mapsData[mapKey].locations.length;
   document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
+
+  // Update the Generate Mission map display
+  updateGenMapDisplay();
 }
 
 // ============================================================
@@ -2742,10 +2814,12 @@ document.getElementById('show-locs-minor').addEventListener('change', () => {
 // ============================================================
 async function init() {
   try {
-    // Load both files in parallel; seed-towns is optional (may fail on non-WASP setup)
-    const [mapsResp, townsResp] = await Promise.allSettled([
+    // Load all data files in parallel; seed-towns, factions, mission-template are optional
+    const [mapsResp, townsResp, factionsResp, templateResp] = await Promise.allSettled([
       fetch('assets/data/maps.json'),
       fetch('assets/data/seed-towns.json'),
+      fetch('assets/data/factions.json'),
+      fetch('assets/data/mission-template.json'),
     ]);
 
     if (mapsResp.status !== 'fulfilled' || !mapsResp.value.ok) {
@@ -2761,6 +2835,22 @@ async function init() {
       console.warn('seed-towns.json not available — seed towns disabled; campaign designer still works');
       townsData = {}; // empty object so getWaspData() can lazily init any map
       seedData  = null;
+    }
+
+    // Load factions.json for the mission generator
+    if (factionsResp.status === 'fulfilled' && factionsResp.value.ok) {
+      factionsData = await factionsResp.value.json();
+    } else {
+      console.warn('factions.json not available — Generate Mission button will be disabled');
+      document.getElementById('btn-generate-mission').disabled = true;
+    }
+
+    // Load mission-template.json for player slot positions
+    if (templateResp.status === 'fulfilled' && templateResp.value.ok) {
+      window._missionTemplate = await templateResp.value.json();
+    } else {
+      console.warn('mission-template.json not available — will use minimal slot stubs');
+      window._missionTemplate = null;
     }
 
     activeMap = 'chernarus';
@@ -2813,6 +2903,7 @@ async function init() {
       document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '0';
       document.getElementById('stat-locs').textContent   = mapsData.chernarus.locations.length;
       document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
+      updateGenMapDisplay();
     });
   } catch (err) {
     console.error('Init failed:', err);
@@ -4097,6 +4188,964 @@ refreshTownOnMap = function(t, idx) {
   window.addEventListener('load', () => { schedFit(); });
 
 })();
+
+// ============================================================
+// TASK 3: MISSION ASSEMBLER + EMITTER
+// ============================================================
+
+// ---- Faction data (loaded from factions.json) ----
+let factionsData = null; // the full factions.json object
+
+// ---- ID counter (global, reset per buildMissionSqm call) ----
+let _idCounter = 0;
+function nextId() { return _idCounter++; }
+
+// ---- Staging anchors for Chernarus (from mission-template.json) ----
+// These are the real cluster anchor positions at SIZE=15360.
+// For other map sizes they are scaled proportionally.
+const STAGING_CHERNARUS = {
+  west: { anchor: [2262.3105, 512.6385, 15295.3544] },
+  east: { anchor: [36.3182,   5.6564,   1592.8916]  },
+  civ:  { anchor: [1927.2078, 544.7598, 15282.436]  },
+};
+// The markers are all clustered near the top-right corner in Chernarus (off-map edge)
+const MARKERS_CHERNARUS = [
+  { name: 'WestTempRespawnMarker', pos: [15491.06, 276.3166, 15198.396], type: 'Empty' },
+  { name: 'EastTempRespawnMarker', pos: [15404.811, 268.3505, 15293.424], type: 'Empty' },
+  { name: 'GuerTempRespawnMarker', pos: [15462.453, 273.3499, 15264.496], type: 'Empty' },
+  { name: 'DEADSPAWNS',   pos: [15440.639, 280.5891, 15237.345], type: 'mil_dot',
+    text: 'DEADSPAWNS, DO NOT ENTER!!!', colorName: 'ColorRed', a: 4.0, b: 4.0 },
+  { name: 'DEADSPAWNS_1', pos: [15439.297, 280.6408, 15237.346], type: 'mil_dot',
+    text: 'DEADSPAWNS, DO NOT ENTER!!!', colorName: 'ColorRed', markerType: 'ELLIPSE', a: 80.0, b: 80.0 },
+];
+
+/**
+ * Scale a 3D staging position [x, alt, y] from Chernarus (15360) to the target size.
+ * Offsets (dx,dz,dy relative to anchor) are kept in metres; only the anchor is scaled.
+ */
+function scaleAnchor(anchor3d, targetSize) {
+  const k = targetSize / 15360;
+  return [anchor3d[0] * k, anchor3d[1], anchor3d[2] * k];
+}
+
+function scalePos3d(pos3d, targetSize) {
+  const k = targetSize / 15360;
+  return [pos3d[0] * k, pos3d[1], pos3d[2] * k];
+}
+
+/**
+ * Deduplicate an array (case-insensitive), preserving first occurrence order.
+ */
+function dedupeAddons(arr) {
+  const seen = new Set();
+  return arr.filter(v => {
+    const key = v.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * Build the full addOns/addOnsAuto arrays for all 4 SQM blocks.
+ * Returns { addOns:[], addOnsAuto:[] }
+ */
+function buildAddonArrays(world, westFaction, eastFaction) {
+  if (!factionsData) return { addOns: [world], addOnsAuto: [world] };
+  const base = factionsData.base_addons || [];
+  const wAdd = (factionsData.factions[westFaction] || {}).addOns || [];
+  const eAdd = (factionsData.factions[eastFaction] || {}).addOns || [];
+  const addOns     = dedupeAddons([world, ...base, ...wAdd, ...eAdd]);
+  const addOnsAuto = dedupeAddons([world, ...base, ...wAdd, ...eAdd]);
+  return { addOns, addOnsAuto };
+}
+
+/**
+ * Escape a string for SQM: double all double-quotes.
+ */
+function sqmEscape(s) { return String(s).replace(/"/g, '""'); }
+
+/**
+ * Format a 3D position for SQM: position[]={x,alt,y}
+ */
+function fmtPos3(x, alt, y) {
+  return `position[]={${x},${alt},${y}}`;
+}
+
+/**
+ * Emit a single SQM item (a vehicle inside a group), returning the SQM block string.
+ * Handles all optional fields.
+ */
+function emitVehicle(opts) {
+  // opts: { id, vehicle, side?, position:[x,alt,y], init?, text?, description?,
+  //         player?, rank?, leader?, forceHeadlessClient?, synchronizations?:[] }
+  const lines = [];
+  lines.push(`\t\t\tclass Item0`);
+  lines.push(`\t\t\t{`);
+  if (opts.position) {
+    lines.push(`\t\t\t\t${fmtPos3(...opts.position)};`);
+  }
+  lines.push(`\t\t\t\tvehicle="${opts.vehicle}";`);
+  if (opts.side) lines.push(`\t\t\t\tside="${opts.side}";`);
+  if (opts.player) lines.push(`\t\t\t\tplayer="${opts.player}";`);
+  if (opts.leader) lines.push(`\t\t\t\tleader=1;`);
+  if (opts.rank)   lines.push(`\t\t\t\trank="${opts.rank}";`);
+  if (opts.text)   lines.push(`\t\t\t\ttext="${sqmEscape(opts.text)}";`);
+  if (opts.description) lines.push(`\t\t\t\tdescription="${sqmEscape(opts.description)}";`);
+  if (opts.init)   lines.push(`\t\t\t\tinit="${sqmEscape(opts.init)}";`);
+  if (opts.forceHeadlessClient) lines.push(`\t\t\t\tforceHeadlessClient=1;`);
+  lines.push(`\t\t\t\tid=${opts.id};`);
+  // synchronizations
+  const syncs = opts.synchronizations || [];
+  lines.push(`\t\t\t\tsynchronizations[]={${syncs.join(',')}};`);
+  lines.push(`\t\t\t};`);
+  return lines.join('\n');
+}
+
+/**
+ * Emit a single SQM group containing exactly ONE vehicle item.
+ * Returns {sqm: string, id: number}
+ */
+function emitGroup(idx, vehicleOpts) {
+  const id = nextId();
+  vehicleOpts.id = id;
+  const vehBlock = emitVehicle(vehicleOpts);
+  const lines = [];
+  lines.push(`\t\tclass Item${idx}`);
+  lines.push(`\t\t{`);
+  lines.push(`\t\t\tclass Vehicles`);
+  lines.push(`\t\t\t{`);
+  lines.push(`\t\t\t\titems=1;`);
+  lines.push(vehBlock);
+  lines.push(`\t\t\t};`);
+  lines.push(`\t\t};`);
+  return { sqm: lines.join('\n'), id };
+}
+
+/**
+ * Emit a town group: one depot + N camps + M defenses.
+ * Returns {sqm, depotId, campIds:[], defIds:[]}
+ */
+function emitTownGroup(groupIdx, town) {
+  const depotId = nextId();
+  const campIds  = [];
+  const defIds   = [];
+
+  // Build the depot init
+  const types    = (town.type && town.type.length > 0) ? town.type : ['TinyTown1'];
+  const typeArg  = types.length === 1
+    ? `\\"${sqmEscape(types[0])}\\"`
+    : `[${types.map(t => `\\"${sqmEscape(t)}\\"`).join(',')}]`;
+
+  // Map planner fields:  startSV→income, maxSV→population, default captureRadius=300
+  const income   = town.startSV   || 0;
+  const pop      = town.maxSV     || 0;
+  const capR     = 300;
+  const dubbing  = town.dubbing   || '+';
+  const alias    = dubbing === '' ? '+' : dubbing;
+
+  // Build camps + defenses ids first (we need them for depot synchronizations)
+  const camps    = town.camps    || [];
+  const defenses = town.defenses || [];
+
+  // Pre-allocate IDs so we can put them in depot sync
+  const preCampIds = camps.map(   () => nextId());
+  const preDefIds  = defenses.map(() => nextId());
+
+  const allChildIds = [...preCampIds, ...preDefIds];
+
+  // Depot init (using SQM-escaped form — the whole string ends up in init="<value>")
+  // The init value will be double-escaped when placed inside init=""
+  const depotInitRaw =
+    `nullReturn=[this,\\"${sqmEscape(town.name)}\\",\\"${sqmEscape(alias)}\\",${income},${pop},${capR},${typeArg}] execVM \\"Common\\\\Init\\\\Init_Town.sqf\\";this enableSimulation false;`;
+
+  const itemCount = 1 + camps.length + defenses.length;
+  const lines = [];
+  lines.push(`\t\tclass Item${groupIdx}`);
+  lines.push(`\t\t{`);
+  lines.push(`\t\t\tclass Vehicles`);
+  lines.push(`\t\t\t{`);
+  lines.push(`\t\t\t\titems=${itemCount};`);
+
+  // Item0 = depot
+  lines.push(`\t\t\t\tclass Item0`);
+  lines.push(`\t\t\t\t{`);
+  lines.push(`\t\t\t\t\t${fmtPos3(town.pos[0], 0, town.pos[1])};`);
+  lines.push(`\t\t\t\t\tvehicle="LocationLogicDepot";`);
+  lines.push(`\t\t\t\t\ttext="${sqmEscape(town.name)}";`);
+  lines.push(`\t\t\t\t\tinit="${depotInitRaw}";`);
+  lines.push(`\t\t\t\t\tid=${depotId};`);
+  lines.push(`\t\t\t\t\tsynchronizations[]={${allChildIds.join(',')}};`);
+  lines.push(`\t\t\t\t};`);
+
+  // Camps
+  camps.forEach((camp, ci) => {
+    const campId = preCampIds[ci];
+    campIds.push(campId);
+    const cx = camp.pos[0], cy = camp.pos[1];
+    lines.push(`\t\t\t\tclass Item${1 + ci}`);
+    lines.push(`\t\t\t\t{`);
+    lines.push(`\t\t\t\t\t${fmtPos3(cx, 0, cy)};`);
+    lines.push(`\t\t\t\t\tvehicle="LocationLogicCamp";`);
+    lines.push(`\t\t\t\t\tid=${campId};`);
+    lines.push(`\t\t\t\t\tsynchronizations[]={${depotId}};`);
+    lines.push(`\t\t\t\t};`);
+  });
+
+  // Defenses
+  defenses.forEach((def, di) => {
+    const defId = preDefIds[di];
+    defIds.push(defId);
+    const dx = def.pos[0], dy = def.pos[1];
+    const kinds = (def.kind && def.kind.length > 0) ? def.kind : ['MGNest'];
+    const kindsStr = `[\\"${kinds.map(k => sqmEscape(k)).join('\\",\\"')}\\"]`;
+    const defInitRaw = `this setVariable [\\"wfbe_defense_kind\\",${kindsStr}];`;
+    lines.push(`\t\t\t\tclass Item${1 + camps.length + di}`);
+    lines.push(`\t\t\t\t{`);
+    lines.push(`\t\t\t\t\t${fmtPos3(dx, 0, dy)};`);
+    lines.push(`\t\t\t\t\tvehicle="Logic";`);
+    lines.push(`\t\t\t\t\tinit="${defInitRaw}";`);
+    lines.push(`\t\t\t\t\tid=${defId};`);
+    lines.push(`\t\t\t\t\tsynchronizations[]={${depotId}};`);
+    lines.push(`\t\t\t\t};`);
+  });
+
+  lines.push(`\t\t\t};`);
+  lines.push(`\t\t};`);
+  return { sqm: lines.join('\n'), depotId, campIds, defIds };
+}
+
+/**
+ * Build the complete mission.sqm text from the current campaign state.
+ * @param {string} world  — world key (e.g. 'chernarus')
+ * @param {number} size   — world size in metres
+ * @param {string} westFaction — faction key (CDF/US/USMC)
+ * @param {string} eastFaction — faction key (INS/RU/TKA)
+ * @param {object} data   — getWaspData() result: {towns, spawns, airports, presets}
+ * @returns {string} the full SQM text
+ */
+function buildMissionSqm({ world, size, westFaction, eastFaction, data }) {
+  // Reset global ID counter
+  _idCounter = 0;
+
+  if (!factionsData) throw new Error('Faction data not loaded');
+  const factions = factionsData.factions;
+  const wFac = factions[westFaction];
+  const eFac = factions[eastFaction];
+  if (!wFac) throw new Error(`Unknown west faction: ${westFaction}`);
+  if (!eFac) throw new Error(`Unknown east faction: ${eastFaction}`);
+
+  const towns    = data.towns    || [];
+  const spawns   = data.spawns   || [];
+  const airports = data.airports || [];
+  const presets  = data.presets  || {};
+
+  // Compute addOns for all 4 blocks
+  const { addOns, addOnsAuto } = buildAddonArrays(world, westFaction, eastFaction);
+  const addOnsStr     = addOns.map(a => `\t\t"${a}"`).join(',\n');
+  const addOnsAutoStr = addOnsAuto.map(a => `\t\t"${a}"`).join(',\n');
+
+  // Staging anchors scaled to target size
+  const wAnchor3  = scaleAnchor(STAGING_CHERNARUS.west.anchor, size);
+  const eAnchor3  = scaleAnchor(STAGING_CHERNARUS.east.anchor, size);
+  const civAnchor3 = scaleAnchor(STAGING_CHERNARUS.civ.anchor, size);
+
+  // Owner positions (slightly offset from anchor)
+  const wOwnerPos3 = [wAnchor3[0], wAnchor3[1] + 2.27, wAnchor3[2] + 14.45];
+  const eOwnerPos3 = [eAnchor3[0] + 1.34, eAnchor3[1] + 0.83, eAnchor3[2] + 14.98];
+
+  // WF_Logic + utility positions — keep near centre of map (scale from Chernarus originals)
+  const wfLogicPos3 = scalePos3d([1916.9998, 0.1286, 54.7467], size);
+  const rcoinPos3   = scalePos3d([1946.9515, 0.0739, 54.8917], size);
+  const mcoinPos3   = scalePos3d([1931.5111, 0.2722, 54.8917], size);
+  const fmgrPos3    = scalePos3d([1961.35,   0.2043, 68.3435], size);
+
+  // Groups array — we'll push {sqm, id?} objects and count them
+  const groupBlocks = []; // array of SQM strings for each class ItemN inside class Groups
+  let groupCount = 0;
+
+  // ---- 1. Town groups ----
+  const depotIds = [];
+  for (const town of towns) {
+    const { sqm } = emitTownGroup(groupCount, town);
+    groupBlocks.push(sqm);
+    // We need the depot ID — but emitTownGroup already consumed it from _idCounter.
+    // We must track: it's the id assigned at the START of emitTownGroup for the depot.
+    // Re-read: emitTownGroup calls nextId() first for depotId, then for each camp/def.
+    // Since we already called it, we stored depotId inside. Let's re-emit to capture.
+    groupCount++;
+  }
+
+  // Wait — we need the depotIds for WF_Logic. Let me redo: track depotIds during town emission.
+  // Reset and re-do properly:
+  _idCounter = 0;
+  groupBlocks.length = 0;
+  groupCount = 0;
+
+  for (const town of towns) {
+    const result = emitTownGroup(groupCount, town);
+    groupBlocks.push(result.sqm);
+    depotIds.push(result.depotId);
+    groupCount++;
+  }
+
+  // ---- 2. Spawn groups ----
+  for (const sp of spawns) {
+    let spawnInit = '';
+    if (sp.side) {
+      const sideStr = sp.side === 'guer' ? 'resistance' : sp.side;
+      const spawnStr = sp.spawn || '';
+      spawnInit = `this setVariable ["wfbe_default",${sideStr}];this setVariable ["wfbe_spawn","${spawnStr}"];`;
+    }
+    const { sqm } = emitGroup(groupCount, {
+      vehicle: 'LocationLogicStart',
+      position: [sp.pos[0], 0, sp.pos[1]],
+      init: spawnInit || undefined,
+    });
+    groupBlocks.push(sqm);
+    groupCount++;
+  }
+
+  // ---- 3. Airport groups ----
+  for (const ap of airports) {
+    const { sqm } = emitGroup(groupCount, {
+      vehicle: 'LocationLogicAirport',
+      position: [ap.pos[0], 0, ap.pos[1]],
+    });
+    groupBlocks.push(sqm);
+    groupCount++;
+  }
+
+  // ---- 4. Owner logics ----
+  // We emit slots first (need their IDs), so collect them.
+  // Pre-allocate owner IDs now so slots can reference them.
+  const wOwnerId = nextId();
+  const eOwnerId = nextId();
+
+  // ---- 5. Player slots (WEST) ----
+  // Load template slots; replace vehicleClass with faction's slotClass; scale position by size.
+  let templateData = null;
+  // templateData is loaded async; we fall back to inline slot generation if not available.
+  const wSlotClass = wFac.slotClass;
+  const eSlotClass = eFac.slotClass;
+  const civClass   = factionsData.base_hc_civ || 'Functionary1';
+
+  const wSlotIds = [];
+  const eSlotIds = [];
+
+  // We use the template slots; if template isn't loaded, build minimal 1-slot-per-side stubs.
+  const tpl = window._missionTemplate || null;
+
+  if (tpl && tpl.slots) {
+    // WEST slots
+    for (const s of tpl.slots.west) {
+      const off = s.offset || [0, 0, 0];
+      const pos3 = [
+        wAnchor3[0] + off[0],
+        wAnchor3[1] + off[1],
+        wAnchor3[2] + off[2],
+      ];
+      const id = nextId();
+      wSlotIds.push(id);
+      const lines = [];
+      const gIdx = groupCount++;
+      lines.push(`\t\tclass Item${gIdx}`);
+      lines.push(`\t\t{`);
+      lines.push(`\t\t\tclass Vehicles`);
+      lines.push(`\t\t\t{`);
+      lines.push(`\t\t\t\titems=1;`);
+      lines.push(`\t\t\t\tclass Item0`);
+      lines.push(`\t\t\t\t{`);
+      lines.push(`\t\t\t\t\t${fmtPos3(pos3[0], pos3[1], pos3[2])};`);
+      lines.push(`\t\t\t\t\tvehicle="${sqmEscape(wSlotClass)}";`);
+      lines.push(`\t\t\t\t\tside="WEST";`);
+      lines.push(`\t\t\t\t\tplayer="PLAY CDG";`);
+      lines.push(`\t\t\t\t\tleader=1;`);
+      lines.push(`\t\t\t\t\trank="${s.rank || 'LIEUTENANT'}";`);
+      if (s.description) lines.push(`\t\t\t\t\tdescription="${sqmEscape(s.description)}";`);
+      if (s.init) lines.push(`\t\t\t\t\tinit="${sqmEscape(s.init)}";`);
+      lines.push(`\t\t\t\t\tid=${id};`);
+      lines.push(`\t\t\t\t\tsynchronizations[]={${wOwnerId}};`);
+      lines.push(`\t\t\t\t};`);
+      lines.push(`\t\t\t};`);
+      lines.push(`\t\t};`);
+      groupBlocks.push(lines.join('\n'));
+    }
+
+    // EAST slots
+    for (const s of tpl.slots.east) {
+      const off = s.offset || [0, 0, 0];
+      const pos3 = [
+        eAnchor3[0] + off[0],
+        eAnchor3[1] + off[1],
+        eAnchor3[2] + off[2],
+      ];
+      const id = nextId();
+      eSlotIds.push(id);
+      const lines = [];
+      const gIdx = groupCount++;
+      lines.push(`\t\tclass Item${gIdx}`);
+      lines.push(`\t\t{`);
+      lines.push(`\t\t\tclass Vehicles`);
+      lines.push(`\t\t\t{`);
+      lines.push(`\t\t\t\titems=1;`);
+      lines.push(`\t\t\t\tclass Item0`);
+      lines.push(`\t\t\t\t{`);
+      lines.push(`\t\t\t\t\t${fmtPos3(pos3[0], pos3[1], pos3[2])};`);
+      lines.push(`\t\t\t\t\tvehicle="${sqmEscape(eSlotClass)}";`);
+      lines.push(`\t\t\t\t\tside="EAST";`);
+      lines.push(`\t\t\t\t\tplayer="PLAY CDG";`);
+      lines.push(`\t\t\t\t\tleader=1;`);
+      lines.push(`\t\t\t\t\trank="${s.rank || 'LIEUTENANT'}";`);
+      if (s.description) lines.push(`\t\t\t\t\tdescription="${sqmEscape(s.description)}";`);
+      if (s.init) lines.push(`\t\t\t\t\tinit="${sqmEscape(s.init)}";`);
+      lines.push(`\t\t\t\t\tid=${id};`);
+      lines.push(`\t\t\t\t\tsynchronizations[]={${eOwnerId}};`);
+      lines.push(`\t\t\t\t};`);
+      lines.push(`\t\t\t};`);
+      lines.push(`\t\t};`);
+      groupBlocks.push(lines.join('\n'));
+    }
+
+    // CIV headless client slot
+    if (tpl.slots.civ && tpl.slots.civ.length > 0) {
+      const civSlot = tpl.slots.civ[0];
+      const civOff = civSlot.offset || [0, 0, 0];
+      const civPos3 = [
+        civAnchor3[0] + civOff[0],
+        civAnchor3[1] + civOff[1],
+        civAnchor3[2] + civOff[2],
+      ];
+      const civId = nextId();
+      const lines = [];
+      const gIdx = groupCount++;
+      lines.push(`\t\tclass Item${gIdx}`);
+      lines.push(`\t\t{`);
+      lines.push(`\t\t\tclass Vehicles`);
+      lines.push(`\t\t\t{`);
+      lines.push(`\t\t\t\titems=1;`);
+      lines.push(`\t\t\t\tclass Item0`);
+      lines.push(`\t\t\t\t{`);
+      lines.push(`\t\t\t\t\t${fmtPos3(civPos3[0], civPos3[1], civPos3[2])};`);
+      lines.push(`\t\t\t\t\tvehicle="${sqmEscape(civClass)}";`);
+      lines.push(`\t\t\t\t\tside="CIV";`);
+      lines.push(`\t\t\t\t\tleader=1;`);
+      lines.push(`\t\t\t\t\tinit="${sqmEscape(civSlot.init || 'this allowdamage false;')}";`);
+      lines.push(`\t\t\t\t\tdescription="${sqmEscape(civSlot.description || 'Headless Client')}";`);
+      lines.push(`\t\t\t\t\tforceHeadlessClient=1;`);
+      lines.push(`\t\t\t\t\tid=${civId};`);
+      lines.push(`\t\t\t\t\tsynchronizations[]={};`);
+      lines.push(`\t\t\t\t};`);
+      lines.push(`\t\t\t};`);
+      lines.push(`\t\t};`);
+      groupBlocks.push(lines.join('\n'));
+    }
+  } else {
+    // Fallback: 2 slots per side (minimal playable)
+    for (let si = 0; si < 2; si++) {
+      const id = nextId();
+      wSlotIds.push(id);
+      const off = si === 0 ? [0, 0, 0] : [3, 0, 0];
+      const pos3 = [wAnchor3[0] + off[0], wAnchor3[1] + off[1], wAnchor3[2] + off[2]];
+      const lines = [];
+      const gIdx = groupCount++;
+      lines.push(`\t\tclass Item${gIdx}`);
+      lines.push(`\t\t{`);
+      lines.push(`\t\t\tclass Vehicles`);
+      lines.push(`\t\t\t{`);
+      lines.push(`\t\t\t\titems=1;`);
+      lines.push(`\t\t\t\tclass Item0`);
+      lines.push(`\t\t\t\t{`);
+      lines.push(`\t\t\t\t\t${fmtPos3(pos3[0], pos3[1], pos3[2])};`);
+      lines.push(`\t\t\t\t\tvehicle="${sqmEscape(wSlotClass)}";`);
+      lines.push(`\t\t\t\t\tside="WEST";`);
+      lines.push(`\t\t\t\t\tplayer="PLAY CDG";`);
+      lines.push(`\t\t\t\t\tleader=1;`);
+      lines.push(`\t\t\t\t\trank="LIEUTENANT";`);
+      lines.push(`\t\t\t\t\tinit="removeAllWeapons this";`);
+      lines.push(`\t\t\t\t\tid=${id};`);
+      lines.push(`\t\t\t\t\tsynchronizations[]={${wOwnerId}};`);
+      lines.push(`\t\t\t\t};`);
+      lines.push(`\t\t\t};`);
+      lines.push(`\t\t};`);
+      groupBlocks.push(lines.join('\n'));
+    }
+    for (let si = 0; si < 2; si++) {
+      const id = nextId();
+      eSlotIds.push(id);
+      const off = si === 0 ? [0, 0, 0] : [3, 0, 0];
+      const pos3 = [eAnchor3[0] + off[0], eAnchor3[1] + off[1], eAnchor3[2] + off[2]];
+      const lines = [];
+      const gIdx = groupCount++;
+      lines.push(`\t\tclass Item${gIdx}`);
+      lines.push(`\t\t{`);
+      lines.push(`\t\t\tclass Vehicles`);
+      lines.push(`\t\t\t{`);
+      lines.push(`\t\t\t\titems=1;`);
+      lines.push(`\t\t\t\tclass Item0`);
+      lines.push(`\t\t\t\t{`);
+      lines.push(`\t\t\t\t\t${fmtPos3(pos3[0], pos3[1], pos3[2])};`);
+      lines.push(`\t\t\t\t\tvehicle="${sqmEscape(eSlotClass)}";`);
+      lines.push(`\t\t\t\t\tside="EAST";`);
+      lines.push(`\t\t\t\t\tplayer="PLAY CDG";`);
+      lines.push(`\t\t\t\t\tleader=1;`);
+      lines.push(`\t\t\t\t\trank="LIEUTENANT";`);
+      lines.push(`\t\t\t\t\tinit="removeAllWeapons this";`);
+      lines.push(`\t\t\t\t\tid=${id};`);
+      lines.push(`\t\t\t\t\tsynchronizations[]={${eOwnerId}};`);
+      lines.push(`\t\t\t\t};`);
+      lines.push(`\t\t\t};`);
+      lines.push(`\t\t};`);
+      groupBlocks.push(lines.join('\n'));
+    }
+  }
+
+  // ---- 6. Owner logics ----
+  // WEST owner
+  {
+    const lines = [];
+    const gIdx = groupCount++;
+    lines.push(`\t\tclass Item${gIdx}`);
+    lines.push(`\t\t{`);
+    lines.push(`\t\t\tclass Vehicles`);
+    lines.push(`\t\t\t{`);
+    lines.push(`\t\t\t\titems=1;`);
+    lines.push(`\t\t\t\tclass Item0`);
+    lines.push(`\t\t\t\t{`);
+    lines.push(`\t\t\t\t\t${fmtPos3(wOwnerPos3[0], wOwnerPos3[1], wOwnerPos3[2])};`);
+    lines.push(`\t\t\t\t\tvehicle="LocationLogicOwnerWest";`);
+    lines.push(`\t\t\t\t\ttext="WFBE_L_BLU";`);
+    lines.push(`\t\t\t\t\tid=${wOwnerId};`);
+    lines.push(`\t\t\t\t\tsynchronizations[]={${wSlotIds.join(',')}};`);
+    lines.push(`\t\t\t\t};`);
+    lines.push(`\t\t\t};`);
+    lines.push(`\t\t};`);
+    groupBlocks.push(lines.join('\n'));
+  }
+
+  // EAST owner
+  {
+    const lines = [];
+    const gIdx = groupCount++;
+    lines.push(`\t\tclass Item${gIdx}`);
+    lines.push(`\t\t{`);
+    lines.push(`\t\t\tclass Vehicles`);
+    lines.push(`\t\t\t{`);
+    lines.push(`\t\t\t\titems=1;`);
+    lines.push(`\t\t\t\tclass Item0`);
+    lines.push(`\t\t\t\t{`);
+    lines.push(`\t\t\t\t\t${fmtPos3(eOwnerPos3[0], eOwnerPos3[1], eOwnerPos3[2])};`);
+    lines.push(`\t\t\t\t\tvehicle="LocationLogicOwnerEast";`);
+    lines.push(`\t\t\t\t\ttext="WFBE_L_OPF";`);
+    lines.push(`\t\t\t\t\tid=${eOwnerId};`);
+    lines.push(`\t\t\t\t\tsynchronizations[]={${eSlotIds.join(',')}};`);
+    lines.push(`\t\t\t\t};`);
+    lines.push(`\t\t\t};`);
+    lines.push(`\t\t};`);
+    groupBlocks.push(lines.join('\n'));
+  }
+
+  // ---- 7. WF_Logic ----
+  {
+    // Build Towns_Removed* arrays from presets
+    let removedLines = '';
+    const presetNameKeys = ['XSmall','Small','Medium','Large','BigTowns','CentralLine','SmallTowns'];
+    for (const pn of presetNameKeys) {
+      const arr = presets[pn];
+      if (arr && arr.length > 0) {
+        const inner = arr.map(n => `\\"${sqmEscape(n)}\\"`).join(',');
+        removedLines += `this setVariable [\\"Towns_Removed${pn}\\",[${inner}]];`;
+      } else {
+        removedLines += `this setVariable [\\"Towns_Removed${pn}\\",[${
+          // Use depot names? No — preset arrays are camelCase depot text names.
+          // For designed maps presets are usually empty → emit []
+          ''}]];`;
+      }
+    }
+
+    const wfInitRaw =
+      `this setVariable [\\"totalTowns\\",${towns.length}];` +
+      removedLines +
+      `this enableSimulation false; nullReturn = [this] ExecVM \\"Common\\\\Init\\\\Init_TownMode.sqf\\"`;
+
+    const wfId = nextId();
+    const lines = [];
+    const gIdx = groupCount++;
+    lines.push(`\t\tclass Item${gIdx}`);
+    lines.push(`\t\t{`);
+    lines.push(`\t\t\tclass Vehicles`);
+    lines.push(`\t\t\t{`);
+    lines.push(`\t\t\t\titems=1;`);
+    lines.push(`\t\t\t\tclass Item0`);
+    lines.push(`\t\t\t\t{`);
+    lines.push(`\t\t\t\t\t${fmtPos3(wfLogicPos3[0], wfLogicPos3[1], wfLogicPos3[2])};`);
+    lines.push(`\t\t\t\t\tvehicle="Logic";`);
+    lines.push(`\t\t\t\t\ttext="WF_Logic";`);
+    lines.push(`\t\t\t\t\tinit="${wfInitRaw}";`);
+    lines.push(`\t\t\t\t\tid=${wfId};`);
+    lines.push(`\t\t\t\t\tsynchronizations[]={};`);
+    lines.push(`\t\t\t\t};`);
+    lines.push(`\t\t\t};`);
+    lines.push(`\t\t};`);
+    groupBlocks.push(lines.join('\n'));
+  }
+
+  // ---- 8. Utility logics (RCoin, MCoin, FunctionsManager) ----
+  const utilityDefs = [
+    { vehicle: 'Logic',             text: 'RCoin',             pos: rcoinPos3  },
+    { vehicle: 'Logic',             text: 'MCoin',             pos: mcoinPos3  },
+    { vehicle: 'FunctionsManager',  text: 'FunctionsManager',  pos: fmgrPos3   },
+  ];
+  for (const u of utilityDefs) {
+    const uid = nextId();
+    const lines = [];
+    const gIdx = groupCount++;
+    lines.push(`\t\tclass Item${gIdx}`);
+    lines.push(`\t\t{`);
+    lines.push(`\t\t\tclass Vehicles`);
+    lines.push(`\t\t\t{`);
+    lines.push(`\t\t\t\titems=1;`);
+    lines.push(`\t\t\t\tclass Item0`);
+    lines.push(`\t\t\t\t{`);
+    lines.push(`\t\t\t\t\t${fmtPos3(u.pos[0], u.pos[1], u.pos[2])};`);
+    lines.push(`\t\t\t\t\tvehicle="${sqmEscape(u.vehicle)}";`);
+    lines.push(`\t\t\t\t\ttext="${sqmEscape(u.text)}";`);
+    lines.push(`\t\t\t\t\tid=${uid};`);
+    lines.push(`\t\t\t\t\tsynchronizations[]={};`);
+    lines.push(`\t\t\t\t};`);
+    lines.push(`\t\t\t};`);
+    lines.push(`\t\t};`);
+    groupBlocks.push(lines.join('\n'));
+  }
+
+  // ---- Markers ----
+  const markerBlocks = [];
+  for (let mi = 0; mi < MARKERS_CHERNARUS.length; mi++) {
+    const m = MARKERS_CHERNARUS[mi];
+    const mpos = scalePos3d(m.pos, size);
+    const mlines = [];
+    mlines.push(`\t\tclass Item${mi}`);
+    mlines.push(`\t\t{`);
+    mlines.push(`\t\t\t${fmtPos3(mpos[0], mpos[1], mpos[2])};`);
+    mlines.push(`\t\t\tname="${sqmEscape(m.name)}";`);
+    mlines.push(`\t\t\ttype="${sqmEscape(m.type)}";`);
+    if (m.text)       mlines.push(`\t\t\ttext="${sqmEscape(m.text)}";`);
+    if (m.colorName)  mlines.push(`\t\t\tcolorName="${sqmEscape(m.colorName)}";`);
+    if (m.markerType) mlines.push(`\t\t\tmarkerType="${sqmEscape(m.markerType)}";`);
+    if (m.a != null)  mlines.push(`\t\t\ta=${m.a};`);
+    if (m.b != null)  mlines.push(`\t\t\tb=${m.b};`);
+    mlines.push(`\t\t};`);
+    markerBlocks.push(mlines.join('\n'));
+  }
+
+  // ---- Assemble the full SQM ----
+  const groupsBody = groupBlocks.join('\n');
+  const markersBody = markerBlocks.join('\n');
+  const totalGroups = groupCount;
+  const totalMarkers = MARKERS_CHERNARUS.length;
+
+  const intelBlock = `\tclass Intel
+\t{
+\t\tbriefingName="WASP Warfare";
+\t\tbriefingDescription="by Benny and Awesome&WASP";
+\t\tresistanceWest=0;
+\t\tstartWeather=0;
+\t\tforecastWeather=0;
+\t\tyear=2016;
+\t\tmonth=12;
+\t\tday=28;
+\t\thour=8;
+\t\tminute=0;
+\t};`;
+
+  const addOnsBlock = (ao, aoa) => `\taddOns[]=
+\t{
+${ao.split('\n').map(l => '\t' + l).join('\n')}
+\t};
+\taddOnsAuto[]=
+\t{
+${aoa.split('\n').map(l => '\t' + l).join('\n')}
+\t};`;
+
+  // Sub-block addons (for Intro/Outro — just world key)
+  const subAddOnsStr     = `\t\t"${world}"`;
+  const subAddOnsAutoStr = `\t\t"${world}"`;
+
+  const sqm =
+`version=11;
+class Mission
+{
+${addOnsBlock(addOnsStr, addOnsAutoStr)}
+\trandomSeed=10034581;
+${intelBlock}
+\tclass Groups
+\t{
+\t\titems=${totalGroups};
+${groupsBody}
+\t};
+\tclass Markers
+\t{
+\t\titems=${totalMarkers};
+${markersBody}
+\t};
+};
+class Intro
+{
+\taddOns[]=
+\t{
+\t\t"${world}"
+\t};
+\taddOnsAuto[]=
+\t{
+\t\t"${world}"
+\t};
+\trandomSeed=13267190;
+\tclass Intel
+\t{
+\t\tstartWeather=0.25;
+\t\tforecastWeather=0.25;
+\t\tyear=2008;
+\t\tmonth=10;
+\t\tday=11;
+\t\thour=9;
+\t\tminute=20;
+\t};
+};
+class OutroWin
+{
+\taddOns[]=
+\t{
+\t\t"${world}"
+\t};
+\taddOnsAuto[]=
+\t{
+\t\t"${world}"
+\t};
+\trandomSeed=10462969;
+\tclass Intel
+\t{
+\t\tstartWeather=0.25;
+\t\tforecastWeather=0.25;
+\t\tyear=2008;
+\t\tmonth=10;
+\t\tday=11;
+\t\thour=9;
+\t\tminute=20;
+\t};
+};
+class OutroLoose
+{
+\taddOns[]=
+\t{
+${addOnsStr.split('\n').map(l => '\t' + l).join('\n')}
+\t};
+\taddOnsAuto[]=
+\t{
+${addOnsAutoStr.split('\n').map(l => '\t' + l).join('\n')}
+\t};
+\trandomSeed=12603217;
+\tclass Intel
+\t{
+\t\tstartWeather=0.25;
+\t\tforecastWeather=0.25;
+\t\tyear=2008;
+\t\tmonth=10;
+\t\tday=11;
+\t\thour=9;
+\t\tminute=20;
+\t};
+};
+`;
+
+  return sqm;
+}
+
+/**
+ * Build the mission folder name.
+ * Format: [NN-2hc]warfarev2_073v48co.<world>
+ */
+function buildFolderName(world, townCount) {
+  const nn = Math.max(1, townCount);
+  return `[${nn}-2hc]warfarev2_073v48co.${world}`;
+}
+
+// ============================================================
+// STRUCTURAL VALIDATOR (used by verify assertions)
+// ============================================================
+
+/**
+ * Parse generated SQM and return structural report:
+ * { groupsItemsDeclared, groupsItemsActual, vehiclesCounts:[{declared,actual}],
+ *   allIds:[], uniqueIds:bool, ownerWestSync:[], ownerEastSync:[],
+ *   slotIds:{west:[],east:[]}, addOns4Blocks:[[],[],[],[]], totalTowns:number,
+ *   depotCount:number }
+ */
+function validateSqmStructure(sqmText) {
+  const report = {};
+
+  // --- Count groups items= ---
+  const groupsItemsM = sqmText.match(/class Groups[\s\S]*?{\s*items\s*=\s*(\d+)/);
+  report.groupsItemsDeclared = groupsItemsM ? parseInt(groupsItemsM[1]) : -1;
+
+  // Extract only the class Groups body (between the opening { and the matching closing })
+  // so we count ItemN entries scoped to Groups only — not Markers or other depth-2 blocks.
+  let groupsBody = '';
+  const groupsKeyIdx = sqmText.indexOf('\tclass Groups\n\t{');
+  if (groupsKeyIdx !== -1) {
+    let depth = 0, bodyStart = -1;
+    for (let i = groupsKeyIdx + '\tclass Groups\n\t'.length; i < sqmText.length; i++) {
+      if (sqmText[i] === '{') { if (depth === 0) bodyStart = i + 1; depth++; }
+      else if (sqmText[i] === '}') { depth--; if (depth === 0) { groupsBody = sqmText.slice(bodyStart, i); break; } }
+    }
+  }
+  // Count depth-2 group items (appear as \t\tclass ItemN lines within the extracted Groups body)
+  const topGroupItems = (groupsBody.match(/^\t\tclass Item\d+\s*$/mg) || []).length;
+  report.groupsItemsActual = topGroupItems;
+
+  // --- All IDs ---
+  const allIds = [...sqmText.matchAll(/\bid\s*=\s*(\d+)\s*;/g)].map(m => parseInt(m[1]));
+  report.allIds = allIds;
+  report.uniqueIds = allIds.length === new Set(allIds).size;
+
+  // --- Vehicles items= ---
+  report.vehiclesCounts = [];
+  const vehMatches = [...sqmText.matchAll(/class Vehicles\s*\{\s*items\s*=\s*(\d+)\s*;([\s\S]*?)^\t\t\t\};/mg)];
+  for (const vm of vehMatches) {
+    const declared = parseInt(vm[1]);
+    // Count nested class Item inside this Vehicles block
+    const actual = (vm[2].match(/class Item\d+/g) || []).length;
+    report.vehiclesCounts.push({ declared, actual });
+  }
+
+  // --- Owner syncs ---
+  const wOwnerM = sqmText.match(/vehicle\s*=\s*"LocationLogicOwnerWest"[\s\S]*?synchronizations\[\]\s*=\s*\{([^}]*)\}/);
+  report.ownerWestSync = wOwnerM ? wOwnerM[1].split(',').map(s => s.trim()).filter(Boolean).map(Number) : [];
+
+  const eOwnerM = sqmText.match(/vehicle\s*=\s*"LocationLogicOwnerEast"[\s\S]*?synchronizations\[\]\s*=\s*\{([^}]*)\}/);
+  report.ownerEastSync = eOwnerM ? eOwnerM[1].split(',').map(s => s.trim()).filter(Boolean).map(Number) : [];
+
+  // --- addOns in all 4 blocks ---
+  // Match all addOns[]={...} blocks
+  const addOnsMatches = [...sqmText.matchAll(/addOns\[\]\s*=\s*\{([^}]*)\}/g)].map(m => {
+    return m[1].split(',').map(s => s.trim().replace(/^"|"$/g, '')).filter(Boolean);
+  });
+  report.addOns4Blocks = addOnsMatches;
+
+  // --- totalTowns ---
+  const ttM = sqmText.match(/totalTowns\\?"?\s*,\s*(\d+)/);
+  report.totalTowns = ttM ? parseInt(ttM[1]) : -1;
+
+  // --- Depot count ---
+  report.depotCount = (sqmText.match(/vehicle\s*=\s*"LocationLogicDepot"/g) || []).length;
+
+  return report;
+}
+
+// ============================================================
+// GENERATE MISSION: UI + wiring
+// ============================================================
+
+function updateGenMapDisplay() {
+  const el = document.getElementById('gen-map-display');
+  if (el) el.textContent = activeMap;
+}
+
+document.getElementById('btn-generate-mission').addEventListener('click', () => {
+  const resultEl = document.getElementById('gen-result');
+  const folderEl = document.getElementById('gen-folder');
+
+  const showResult = (msg, type) => {
+    resultEl.textContent = msg;
+    resultEl.className = 'gen-result ' + type;
+    resultEl.style.display = 'block';
+  };
+
+  const data = getWaspData();
+  if (!data) {
+    showResult('Map data not loaded yet.', 'err');
+    return;
+  }
+
+  const westFaction = document.getElementById('gen-west-faction').value;
+  const eastFaction = document.getElementById('gen-east-faction').value;
+
+  // Validate: warn if 0 towns
+  if (data.towns.length === 0) {
+    showResult('Warning: no towns on this map. Generating anyway (you can add towns first).', 'warn');
+  }
+
+  let sqmText;
+  try {
+    sqmText = buildMissionSqm({
+      world:       activeMap,
+      size:        SIZE,
+      westFaction,
+      eastFaction,
+      data,
+    });
+  } catch (err) {
+    showResult('Build error: ' + err.message, 'err');
+    console.error('buildMissionSqm error:', err);
+    return;
+  }
+
+  // Download the file
+  const blob = new Blob([sqmText], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'mission.sqm';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Show folder name
+  const folderName = buildFolderName(activeMap, data.towns.length);
+  folderEl.textContent = folderName;
+  folderEl.style.display = 'block';
+
+  // Run structural validation
+  const report = validateSqmStructure(sqmText);
+  const issues = [];
+
+  if (!report.uniqueIds) issues.push('DUPLICATE IDs detected');
+  if (report.groupsItemsDeclared !== report.groupsItemsActual) {
+    issues.push(`Groups items= mismatch: declared ${report.groupsItemsDeclared}, actual ${report.groupsItemsActual}`);
+  }
+  for (const vc of report.vehiclesCounts) {
+    if (vc.declared !== vc.actual) {
+      issues.push(`Vehicles items= mismatch: declared ${vc.declared}, actual ${vc.actual}`);
+    }
+  }
+  // addOns check — all 4 blocks should contain the world key
+  if (report.addOns4Blocks.length < 4) {
+    issues.push(`Expected 4 addOns[] blocks, found ${report.addOns4Blocks.length}`);
+  }
+  for (let bi = 0; bi < report.addOns4Blocks.length; bi++) {
+    if (!report.addOns4Blocks[bi].includes(activeMap)) {
+      issues.push(`addOns block ${bi + 1} missing world "${activeMap}"`);
+    }
+  }
+  if (report.totalTowns !== data.towns.length) {
+    issues.push(`totalTowns=${report.totalTowns} but ${data.towns.length} towns`);
+  }
+  if (report.depotCount !== data.towns.length) {
+    issues.push(`Depot count ${report.depotCount} ≠ town count ${data.towns.length}`);
+  }
+
+  if (issues.length > 0) {
+    showResult('Generated with issues:\n' + issues.join('\n'), 'warn');
+    console.warn('SQM structural issues:', issues);
+  } else {
+    showResult(
+      `Generated OK — ${data.towns.length} towns · WEST=${westFaction} · EAST=${eastFaction}\n` +
+      `${report.allIds.length} entities · ${report.uniqueIds ? 'all IDs unique' : 'ID COLLISION'}\n` +
+      `Drop folder into your Arma 2 \\Missions directory and play!`,
+      data.towns.length === 0 ? 'warn' : 'ok'
+    );
+  }
+});
+
+// updateGenMapDisplay is called from switchMap() and from init() requestAnimationFrame.
 
 init();
 </script>
