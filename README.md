@@ -6,10 +6,13 @@ A browser-based, offline, single-file **strategic map editor** for Arma 2 **WASP
 
 ## What it does
 
-Edit the whole WASP campaign on a map. Every capturable **town** is a draggable marker on a pan/zoom map of the chosen world:
+Edit the whole WASP campaign on a map. Every capturable **town** is a draggable marker on a pan/zoom map of the chosen world, over a **real topographic texture**:
 
-- **All 7 stock Arma 2 / expansion maps preloaded** — Chernarus (15360 m), Takistan (12800 m), Zargabad (8192 m), Utes (5120 m), Shapur, Proving Grounds, Desert — each with its real **named locations** (cities/villages from `CfgWorlds`) as reference markers.
-- **WASP towns** on Chernarus + Takistan are **editable**: drag to reposition, and click to retune **supply** (`startSV`/`maxSV`), **income value**, and **AI town-type** in the inspector. 600 m capture rings, spawn points and airfields shown.
+- **All 7 stock Arma 2 / expansion maps preloaded** — Chernarus (15360 m), Takistan (12800 m), Zargabad (8192 m), Utes (5120 m), Shapur, Proving Grounds, Desert — each with a **topographic map image** (alignment-verified; toggle + opacity) and its real **named locations** from `CfgWorlds` as reference markers.
+- **Town editing on every map**: drag to reposition; click to retune **supply** (`startSV`/`maxSV`), **income value**, **AI town-type**; 600 m capture rings.
+- **Campaign designer** — add/delete towns, **promote a CfgWorlds location → capturable town**, and design a campaign **from scratch on any map** (Zargabad, Utes…), exporting paste-ready `Init_Town` blocks.
+- **Tactical layer** — editable **camps**, **defenses** (MGNest etc.), **spawn points** (per-side), and **airfields**.
+- **Strategy overlays** — paint town **ownership** (side totals), **income** per town (`value × COEF`), an approximate **frontline** with contested/distance-to-front shading, and **capture-time** estimates.
 - **Size presets** — toggle which towns each `Towns_Removed*` preset (XSmall…Huge) includes.
 
 ## Mission I/O
@@ -26,11 +29,6 @@ Where WDDM edits meter-scale footprints and Loadout Lab edits a unit's kit, this
 
 `tools/extract_towns.py` parses the mission `mission.sqm` (`LocationLogicDepot` towns + spawns + airfields + presets) → `assets/data/seed-towns.json`. `tools/extract_worlds.py` parses `CfgWorlds.txt` (all 7 worlds: size + named locations) → `assets/data/maps.json`. `index.html` is the single-file app. Tests: `python tools/test_extract_towns.py && python tools/test_extract_worlds.py`.
 
-## Roadmap (v2 ideas)
-
-- **Design campaigns on any map** — promote a CfgWorlds location to a WASP town / place towns from scratch on Zargabad, Utes, etc. (export new-mission town blocks).
-- Real topographic map images under the grid.
-
 ## License
 
-Unofficial, non-commercial reference tool for mission development. Arma 2 map data © **Bohemia Interactive**.
+Unofficial, non-commercial reference tool for mission development. Arma 2 map data + topographic map renders © **Bohemia Interactive** (map images via the Armed Assault wiki, reference use only).
