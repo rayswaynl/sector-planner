@@ -413,6 +413,40 @@
   .route-edit-pending{fill:rgba(217,118,60,.18);stroke:var(--orange);stroke-width:2;
     vector-effect:non-scaling-stroke;pointer-events:none}
 
+  /* ---- Campaign Sim panel ---- */
+  .sim-panel{margin-top:4px;padding:10px 0 0}
+  .sim-heuristic-note{font-size:10px;color:#5a6470;line-height:1.5;font-family:'JetBrains Mono',monospace;
+    padding:5px 8px;background:rgba(14,17,20,.55);border:1px solid var(--line);border-radius:4px;margin-bottom:8px}
+  .sim-params-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+  .sim-param-cell{background:var(--gunmetal);border:1px solid var(--line);border-radius:4px;padding:5px 7px}
+  .sim-param-cell label{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#8b939c;margin:0 0 3px;display:block}
+  .sim-param-cell input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--line);
+    color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;padding:1px 0;text-align:right}
+  .sim-param-cell input:focus{border-color:var(--orange)}
+  .sim-run-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+    background:var(--olive);border:1px solid #7a8a4a;border-radius:5px;
+    padding:7px 10px;cursor:pointer;font-size:11px;font-weight:600;
+    color:var(--chalk);font-family:Oswald,sans-serif;letter-spacing:.5px}
+  .sim-run-btn:hover:not(:disabled){background:#6f7c3f;border-color:#9aaa5a}
+  .sim-run-btn:disabled{opacity:.4;cursor:not-allowed}
+  .sim-playback{margin-top:8px;display:none}
+  .sim-playback-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+  .sim-play-btn{width:26px;height:26px;border:1px solid var(--line);border-radius:4px;
+    background:var(--gunmetal);color:var(--bone);font-size:13px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .sim-play-btn:hover{border-color:var(--orange);color:var(--orange)}
+  .sim-tick-slider{flex:1;accent-color:var(--orange);height:4px;cursor:pointer}
+  .sim-tick-badge{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b939c;width:46px;text-align:right;flex:0 0 auto}
+  .sim-reset-btn{display:flex;align-items:center;gap:5px;width:100%;
+    background:transparent;border:1px solid #3a3f47;border-radius:4px;
+    padding:5px 8px;cursor:pointer;font-size:10px;color:#8b939c;font-family:Inter,sans-serif;margin-top:5px}
+  .sim-reset-btn:hover{border-color:var(--danger);color:var(--danger)}
+  .sim-outcome{font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.5;
+    padding:5px 7px;border-radius:4px;margin-top:6px;display:none;
+    background:rgba(14,17,20,.6);border:1px solid var(--line);color:#b0bbc8}
+  .sim-chart-wrap{margin-top:8px;display:none}
+  .sim-chart-label{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#8b939c;margin-bottom:4px}
+
   /* ---- Generate Mission panel ---- */
   .gen-panel{border-top:1px solid var(--line);padding:12px 14px;flex:0 0 auto}
   .gen-panel .gen-title{font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.5px;color:var(--bone);margin-bottom:10px}
@@ -712,6 +746,59 @@
           <input type="number" id="capture-rate" min="1" max="9999" value="5" title="Capture time ≈ maxSV ÷ rate ticks">
         </div>
 
+        <!-- ===== Campaign Sim ===== -->
+        <div class="divider" style="margin:10px 0 6px"></div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#9aa3ad;margin-bottom:4px">Campaign Sim</div>
+        <div class="sim-panel" id="sim-panel">
+          <div class="sim-heuristic-note">
+            Approximate heuristic preview — not the live WASP AI.<br>
+            Requires painted ownership + supply routes.
+          </div>
+
+          <div class="sim-params-grid">
+            <div class="sim-param-cell">
+              <label>Ticks</label>
+              <input type="number" id="sim-ticks" min="5" max="300" value="60">
+            </div>
+            <div class="sim-param-cell">
+              <label>Drain scale</label>
+              <input type="number" id="sim-drain-scale" min="0.01" max="10" step="0.01" value="0.04">
+            </div>
+            <div class="sim-param-cell">
+              <label>Base defense</label>
+              <input type="number" id="sim-base-defense" min="0" max="9999" value="200">
+            </div>
+            <div class="sim-param-cell">
+              <label>Income weight</label>
+              <input type="number" id="sim-income-weight" min="0" max="1" step="0.001" value="0.002">
+            </div>
+          </div>
+
+          <button class="sim-run-btn" id="btn-sim-run">&#9654; Run Simulation</button>
+
+          <!-- Playback controls (shown after run) -->
+          <div class="sim-playback" id="sim-playback">
+            <div class="sim-playback-row">
+              <button class="sim-play-btn" id="btn-sim-play" title="Play / Pause">&#9654;</button>
+              <input type="range" class="sim-tick-slider" id="sim-tick-slider" min="0" max="60" value="0">
+              <span class="sim-tick-badge" id="sim-tick-badge">t0</span>
+            </div>
+            <button class="sim-reset-btn" id="btn-sim-reset">
+              <span style="font-size:11px">&#8635;</span> Restore real ownership
+            </button>
+          </div>
+
+          <!-- Outcome readout -->
+          <div class="sim-outcome" id="sim-outcome"></div>
+
+          <!-- Town-count curve chart -->
+          <div class="sim-chart-wrap" id="sim-chart-wrap">
+            <div class="sim-chart-label">Town count over ticks</div>
+            <svg id="sim-chart-svg" width="100%" height="90" viewBox="0 0 240 90"
+                 style="display:block;overflow:visible" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+
       </div>
 
       <div class="divider"></div>
@@ -806,6 +893,8 @@
         <g id="g-income-labels"></g>
         <!-- WASP Town markers (on top) -->
         <g id="g-towns"></g>
+        <!-- Sim overlay: coloured rings over towns during playback (above town markers) -->
+        <g id="g-sim-overlay"></g>
         <!-- Town labels -->
         <g id="g-labels"></g>
         <!-- Location labels (settlements) -->
@@ -5534,7 +5623,522 @@ document.getElementById('btn-generate-mission').addEventListener('click', () => 
 
 // updateGenMapDisplay is called from switchMap() and from init() requestAnimationFrame.
 
-init();
+// ============================================================
+// CAMPAIGN SIMULATION — deterministic heuristic balance preview
+// ============================================================
+(function() {
+  // ---- Sim state (kept entirely separate from real townsData) ----
+  // simState: array per tick of { sides: {name→side}, svs: {name→sv} }
+  // simFlips: array per tick of [{name, fromSide, toSide}]
+  // simIncome: array per tick of {west, east, guer, neutral}
+  // simCounts: array per tick of {west, east, guer, neutral}
+  let simState   = null; // [{sides:{}, svs:{}}]  length = ticks+1
+  let simFlips   = null; // [{name,from,to}][]
+  let simIncome  = null; // [{west,east,guer,neutral}]
+  let simCounts  = null; // [{west,east,guer,neutral}]
+  let simTicks   = 0;
+  let simViewMode = false; // true = showing sim overlay instead of real ownership
+  let simPlayTimer = null;
+  let simCurrentTick = 0;
+
+  // ---- Helpers ----
+  function getSimParam(id, def) {
+    const el = document.getElementById(id);
+    if (!el) return def;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? def : v;
+  }
+
+  // Build adjacency map from _supplyEdges: name → [name, ...]
+  function buildAdjacency(towns, edges) {
+    const adj = new Map(towns.map(t => [t.name, []]));
+    for (const [a, b] of edges) {
+      if (adj.has(a)) adj.get(a).push(b);
+      if (adj.has(b)) adj.get(b).push(a);
+    }
+    return adj;
+  }
+
+  // ---- Core simulation ----
+  function runSim() {
+    const data = getWaspData();
+    if (!data || data.towns.length === 0) {
+      alert('No towns on the current map. Add towns first.');
+      return;
+    }
+
+    const ticks        = Math.max(1, Math.round(getSimParam('sim-ticks', 60)));
+    const DRAIN_SCALE  = getSimParam('sim-drain-scale', 0.04);
+    const BASE_DEFENSE = getSimParam('sim-base-defense', 200);
+    const INCOME_W     = getSimParam('sim-income-weight', 0.002);
+    const COEF         = parseInt(document.getElementById('income-coef').value, 10) || 8;
+
+    const towns = data.towns;
+    const edges = data._supplyEdges || [];
+    const adj   = buildAdjacency(towns, edges);
+
+    // Initial state: clone painted sides + startSV
+    let sides = {};
+    let svs   = {};
+    for (const t of towns) {
+      sides[t.name] = t.side || 'neutral';
+      svs[t.name]   = Math.max(0, Math.min(t.maxSV || 45, t.startSV || 10));
+    }
+
+    simState  = [{ sides: {...sides}, svs: {...svs} }];
+    simFlips  = [[]];
+    simIncome = [];
+    simCounts = [];
+    simTicks  = ticks;
+
+    // Pre-build lookup
+    const townByName = new Map(towns.map(t => [t.name, t]));
+
+    function calcIncome(sidesNow) {
+      const inc = { west: 0, east: 0, guer: 0, neutral: 0 };
+      for (const t of towns) {
+        const s = sidesNow[t.name] || 'neutral';
+        inc[s] = (inc[s] || 0) + (t.value || 0) * COEF;
+      }
+      return inc;
+    }
+
+    function calcCounts(sidesNow) {
+      const cnt = { west: 0, east: 0, guer: 0, neutral: 0 };
+      for (const t of towns) {
+        const s = sidesNow[t.name] || 'neutral';
+        cnt[s] = (cnt[s] || 0) + 1;
+      }
+      return cnt;
+    }
+
+    for (let tick = 0; tick < ticks; tick++) {
+      // Record income + counts at start of tick
+      simIncome.push(calcIncome(sides));
+      simCounts.push(calcCounts(sides));
+
+      const income = simIncome[tick];
+      const newSvs  = {...svs};
+      const newSides = {...sides};
+      const flips = [];
+
+      // For each town: compute pressure from each side among adjacent towns
+      for (const t of towns) {
+        const tSide = sides[t.name];
+        const tMaxSV = t.maxSV || 45;
+        const tName  = t.name;
+        const nbrs   = adj.get(tName) || [];
+
+        if (nbrs.length === 0) continue; // isolated town: no pressure
+
+        // Accumulate pressure per side from neighbours
+        const pressureFromSide = {};
+        for (const nbrName of nbrs) {
+          const nbrSide = sides[nbrName];
+          if (!nbrSide || nbrSide === 'neutral') continue;
+          const nbrTown = townByName.get(nbrName);
+          if (!nbrTown) continue;
+          // Pressure = neighbour value + share of that side's income
+          const contrib = (nbrTown.value || 0) + income[nbrSide] * INCOME_W;
+          pressureFromSide[nbrSide] = (pressureFromSide[nbrSide] || 0) + contrib;
+        }
+
+        // Remove the defending side's own pressure from the "attacker" pool
+        const sides_pressuring = Object.entries(pressureFromSide)
+          .filter(([s]) => s !== tSide)
+          .sort(([, a], [, b]) => b - a);
+
+        if (sides_pressuring.length === 0) continue; // no enemy pressure
+
+        const [topSide, topPressure] = sides_pressuring[0];
+        const secondPressure = sides_pressuring.length > 1 ? sides_pressuring[1][1] : 0;
+
+        // Defense = base + defending side's own adjacent pressure (0 if neutral/no defenders)
+        const defPressure = (tSide !== 'neutral') ? (pressureFromSide[tSide] || 0) : 0;
+        const defense = BASE_DEFENSE + defPressure;
+
+        // Drain = how much the top attacker exceeds both defense and second attacker
+        const drain = Math.max(0, topPressure - Math.max(defense, secondPressure)) * DRAIN_SCALE;
+
+        if (drain > 0) {
+          newSvs[tName] = Math.max(0, Math.min(tMaxSV, svs[tName] - drain));
+
+          // Capture: SV hit 0 → flip to top attacker, reset SV
+          if (newSvs[tName] <= 0) {
+            const fromSide = newSides[tName];
+            newSides[tName] = topSide;
+            newSvs[tName]   = t.startSV || 10;
+            if (fromSide !== topSide) {
+              flips.push({ name: tName, from: fromSide, to: topSide });
+            }
+          }
+        } else {
+          // No pressure: recover SV slowly toward startSV (stability)
+          if (tSide !== 'neutral' && svs[tName] < (t.startSV || 10)) {
+            newSvs[tName] = Math.min(t.startSV || 10, svs[tName] + 0.5);
+          }
+        }
+      }
+
+      sides = newSides;
+      svs   = newSvs;
+      simState.push({ sides: {...sides}, svs: {...svs} });
+      simFlips.push(flips);
+    }
+
+    // Final tick income+counts
+    simIncome.push(calcIncome(sides));
+    simCounts.push(calcCounts(sides));
+
+    return { ticks, totalTowns: towns.length };
+  }
+
+  // ---- Overlay rendering ----
+  function renderSimOverlay(tick) {
+    const g = document.getElementById('g-sim-overlay');
+    if (!g) return;
+    g.innerHTML = '';
+
+    if (!simViewMode || !simState || tick < 0 || tick >= simState.length) return;
+
+    const data = getWaspData();
+    if (!data) return;
+    const state = simState[tick];
+
+    data.towns.forEach(t => {
+      const [wx, wy] = t.pos;
+      const svgY = SIZE - wy;
+      const r = townRadius(t.value);
+      const tSide = state.sides[t.name] || 'neutral';
+      const col = getSideColor(tSide);
+
+      // Coloured halo circle
+      const halo = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      halo.setAttribute('cx', wx);
+      halo.setAttribute('cy', svgY);
+      halo.setAttribute('r', r * 1.45);
+      halo.setAttribute('fill', col);
+      halo.setAttribute('fill-opacity', '0.55');
+      halo.setAttribute('stroke', col);
+      halo.setAttribute('stroke-width', '2.5');
+      halo.setAttribute('vector-effect', 'non-scaling-stroke');
+      halo.setAttribute('pointer-events', 'none');
+      g.appendChild(halo);
+
+      // SV fraction bar (small arc indicator — simple rect below town)
+      const tData = data.towns.find(x => x.name === t.name);
+      const maxSV = (tData && tData.maxSV) || 45;
+      const sv    = state.svs[t.name] || 0;
+      const frac  = Math.max(0, Math.min(1, sv / maxSV));
+      const barW  = r * 2.2;
+      const barH  = r * 0.22;
+      const barX  = wx - barW / 2;
+      const barY  = svgY + r * 1.1;
+
+      const barBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      barBg.setAttribute('x', barX); barBg.setAttribute('y', barY);
+      barBg.setAttribute('width', barW); barBg.setAttribute('height', barH);
+      barBg.setAttribute('fill', 'rgba(14,17,20,0.7)');
+      barBg.setAttribute('rx', barH / 2);
+      barBg.setAttribute('pointer-events', 'none');
+      g.appendChild(barBg);
+
+      const barFg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      barFg.setAttribute('x', barX); barFg.setAttribute('y', barY);
+      barFg.setAttribute('width', barW * frac); barFg.setAttribute('height', barH);
+      barFg.setAttribute('fill', col);
+      barFg.setAttribute('fill-opacity', '0.85');
+      barFg.setAttribute('rx', barH / 2);
+      barFg.setAttribute('pointer-events', 'none');
+      g.appendChild(barFg);
+    });
+  }
+
+  // ---- Chart rendering ----
+  function renderSimChart() {
+    const svg = document.getElementById('sim-chart-svg');
+    if (!svg || !simCounts || simCounts.length === 0) return;
+
+    const W = 240, H = 90;
+    const PAD = { t: 8, r: 8, b: 18, l: 24 };
+    const cW = W - PAD.l - PAD.r;
+    const cH = H - PAD.t - PAD.b;
+
+    svg.innerHTML = '';
+
+    const totalTowns = simCounts[0]
+      ? Object.values(simCounts[0]).reduce((s, v) => s + v, 0)
+      : 1;
+    const n = simCounts.length;
+
+    function px(tick) { return PAD.l + (tick / (n - 1)) * cW; }
+    function py(count) { return PAD.t + cH - (count / totalTowns) * cH; }
+
+    // Background
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('x', PAD.l); bg.setAttribute('y', PAD.t);
+    bg.setAttribute('width', cW); bg.setAttribute('height', cH);
+    bg.setAttribute('fill', 'rgba(14,17,20,0.55)');
+    svg.appendChild(bg);
+
+    // Y-axis labels (0 and totalTowns)
+    const mkLabel = (txt, x, y, anchor) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      el.setAttribute('x', x); el.setAttribute('y', y);
+      el.setAttribute('text-anchor', anchor || 'end');
+      el.setAttribute('font-size', '8');
+      el.setAttribute('font-family', "'JetBrains Mono', monospace");
+      el.setAttribute('fill', '#5a6470');
+      el.textContent = txt;
+      svg.appendChild(el);
+    };
+    mkLabel(totalTowns, PAD.l - 2, PAD.t + 4, 'end');
+    mkLabel('0', PAD.l - 2, PAD.t + cH, 'end');
+    mkLabel('t0', PAD.l, H - 4, 'middle');
+    mkLabel(`t${n - 1}`, PAD.l + cW, H - 4, 'middle');
+
+    // Draw lines for west, east (and guer if present)
+    const drawLine = (key, color) => {
+      if (!simCounts.some(c => c[key] > 0)) return;
+      const pts = simCounts
+        .map((c, i) => `${px(i).toFixed(1)},${py(c[key] || 0).toFixed(1)}`)
+        .join(' ');
+      const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      poly.setAttribute('points', pts);
+      poly.setAttribute('fill', 'none');
+      poly.setAttribute('stroke', color);
+      poly.setAttribute('stroke-width', '1.5');
+      poly.setAttribute('vector-effect', 'non-scaling-stroke');
+      svg.appendChild(poly);
+    };
+
+    drawLine('west', '#5D82A3');
+    drawLine('east', '#A8503F');
+    drawLine('guer', '#5C6536');
+    drawLine('neutral', '#5a6470');
+
+    // Legend (small dots)
+    const LEGEND = [['W', '#5D82A3'], ['E', '#A8503F'], ['G', '#5C6536'], ['N', '#5a6470']];
+    LEGEND.forEach(([lbl, col], i) => {
+      const lx = PAD.l + i * 28;
+      const ly = PAD.t + cH + 13;
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('cx', lx); dot.setAttribute('cy', ly - 2);
+      dot.setAttribute('r', 3); dot.setAttribute('fill', col);
+      svg.appendChild(dot);
+      const ltx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      ltx.setAttribute('x', lx + 5); ltx.setAttribute('y', ly);
+      ltx.setAttribute('font-size', '7');
+      ltx.setAttribute('font-family', "'JetBrains Mono', monospace");
+      ltx.setAttribute('fill', col);
+      ltx.textContent = lbl;
+      svg.appendChild(ltx);
+    });
+
+    // Current tick marker
+    if (simCurrentTick >= 0 && simCurrentTick < n) {
+      const tx = px(simCurrentTick);
+      const tickLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      tickLine.setAttribute('x1', tx); tickLine.setAttribute('y1', PAD.t);
+      tickLine.setAttribute('x2', tx); tickLine.setAttribute('y2', PAD.t + cH);
+      tickLine.setAttribute('stroke', 'rgba(217,118,60,0.6)');
+      tickLine.setAttribute('stroke-width', '1');
+      tickLine.setAttribute('stroke-dasharray', '2 2');
+      tickLine.setAttribute('vector-effect', 'non-scaling-stroke');
+      tickLine.setAttribute('id', 'sim-chart-tick-line');
+      svg.appendChild(tickLine);
+    }
+  }
+
+  function updateChartTickLine() {
+    // Quick update of just the tick marker without full redraw
+    const existing = document.getElementById('sim-chart-tick-line');
+    const svgEl = document.getElementById('sim-chart-svg');
+    if (!svgEl || !simCounts) return;
+    const n = simCounts.length;
+    const W = 240;
+    const PAD = { l: 24, r: 8 };
+    const cW = W - PAD.l - PAD.r;
+    const tx = (PAD.l + (simCurrentTick / Math.max(1, n - 1)) * cW).toFixed(1);
+    if (existing) {
+      existing.setAttribute('x1', tx);
+      existing.setAttribute('x2', tx);
+    }
+  }
+
+  // ---- Outcome readout ----
+  function buildOutcome() {
+    if (!simState || !simCounts) return '';
+    const finalCounts = simCounts[simCounts.length - 1];
+    const total = Object.values(finalCounts).reduce((s, v) => s + v, 0);
+    const initCounts = simCounts[0];
+
+    // Find winner (non-neutral side with most towns)
+    const sides = ['west', 'east', 'guer'];
+    const winner = sides.reduce((a, b) => (finalCounts[a] || 0) >= (finalCounts[b] || 0) ? a : b);
+    const wCount = finalCounts[winner] || 0;
+    const initW  = initCounts[winner]  || 0;
+
+    // Detect elimination
+    const losers = sides.filter(s => s !== winner && (initCounts[s] || 0) > 0 && (finalCounts[s] || 0) === 0);
+    let elimTick = null;
+    if (losers.length > 0) {
+      const loser = losers[0];
+      for (let t = 0; t < simCounts.length; t++) {
+        if ((simCounts[t][loser] || 0) === 0 && (simCounts[Math.max(0,t-1)][loser] || 0) > 0) {
+          elimTick = t; break;
+        }
+      }
+    }
+
+    // Detect stability (last 10 ticks: change ≤2 towns)
+    const last10start = Math.max(0, simCounts.length - 11);
+    const countDiff = Math.abs((simCounts[simCounts.length - 1][winner] || 0) -
+                               (simCounts[last10start][winner] || 0));
+    const stable = countDiff <= 2 && losers.length === 0;
+
+    // Snowball: winner gained significantly
+    const delta = wCount - initW;
+    const label = SIDE_COLORS[winner] ? winner.toUpperCase() : winner;
+
+    let line = '';
+    if (losers.length > 0 && elimTick !== null) {
+      line = `${losers.map(s=>s.toUpperCase()).join('+')} eliminated at t${elimTick} — ${label} dominant (${wCount}/${total})`;
+    } else if (stable) {
+      line = `Stable frontline (±${countDiff} towns) — ${label} leads ${wCount}/${total} at t${simTicks}`;
+    } else if (delta >= 5) {
+      line = `${label} snowball: ${initW}→${wCount} towns by t${simTicks} (${delta>0?'+':''}${delta})`;
+    } else {
+      line = `${label} holds ${wCount}/${total} by t${simTicks}`;
+    }
+    return line;
+  }
+
+  // ---- Enter / exit sim view ----
+  function enterSimView(tick) {
+    simViewMode = true;
+    simCurrentTick = tick;
+    renderSimOverlay(tick);
+  }
+
+  function exitSimView() {
+    simViewMode = false;
+    const g = document.getElementById('g-sim-overlay');
+    if (g) g.innerHTML = '';
+  }
+
+  // ---- Playback ----
+  function seekTick(tick) {
+    if (!simState) return;
+    tick = Math.max(0, Math.min(simState.length - 1, tick));
+    simCurrentTick = tick;
+    document.getElementById('sim-tick-slider').value = tick;
+    document.getElementById('sim-tick-badge').textContent = `t${tick}`;
+    if (simViewMode) renderSimOverlay(tick);
+    updateChartTickLine();
+  }
+
+  function togglePlay() {
+    if (simPlayTimer) {
+      clearInterval(simPlayTimer);
+      simPlayTimer = null;
+      document.getElementById('btn-sim-play').innerHTML = '&#9654;';
+    } else {
+      // If at end, restart
+      if (simCurrentTick >= simTicks) seekTick(0);
+      document.getElementById('btn-sim-play').innerHTML = '&#9646;&#9646;';
+      simPlayTimer = setInterval(() => {
+        const next = simCurrentTick + 1;
+        if (next > simTicks) {
+          clearInterval(simPlayTimer);
+          simPlayTimer = null;
+          document.getElementById('btn-sim-play').innerHTML = '&#9654;';
+        } else {
+          seekTick(next);
+        }
+      }, 150);
+    }
+  }
+
+  // ---- Wire controls ----
+  document.getElementById('btn-sim-run').addEventListener('click', () => {
+    // Stop any playback
+    if (simPlayTimer) { clearInterval(simPlayTimer); simPlayTimer = null; }
+
+    const result = runSim();
+    if (!result) return;
+
+    // Activate sim view at tick 0
+    enterSimView(0);
+
+    // Show playback UI
+    const pb = document.getElementById('sim-playback');
+    pb.style.display = '';
+    const slider = document.getElementById('sim-tick-slider');
+    slider.max   = result.ticks;
+    slider.value = 0;
+    document.getElementById('sim-tick-badge').textContent = 't0';
+    document.getElementById('btn-sim-play').innerHTML = '&#9654;';
+
+    // Outcome
+    const outcomeEl = document.getElementById('sim-outcome');
+    outcomeEl.textContent = buildOutcome();
+    outcomeEl.style.display = '';
+
+    // Chart
+    const chartWrap = document.getElementById('sim-chart-wrap');
+    chartWrap.style.display = '';
+    renderSimChart();
+
+    // Ensure ownership is visible while sim runs (show overlay alongside real view)
+    if (!document.getElementById('show-ownership').checked) {
+      document.getElementById('show-ownership').checked = true;
+      updateOwnershipToggle();
+    }
+  });
+
+  document.getElementById('btn-sim-play').addEventListener('click', togglePlay);
+
+  document.getElementById('sim-tick-slider').addEventListener('input', (e) => {
+    if (simPlayTimer) { clearInterval(simPlayTimer); simPlayTimer = null;
+      document.getElementById('btn-sim-play').innerHTML = '&#9654;'; }
+    seekTick(parseInt(e.target.value, 10));
+  });
+
+  document.getElementById('btn-sim-reset').addEventListener('click', () => {
+    if (simPlayTimer) { clearInterval(simPlayTimer); simPlayTimer = null; }
+    exitSimView();
+    document.getElementById('sim-playback').style.display   = 'none';
+    document.getElementById('sim-outcome').style.display    = 'none';
+    document.getElementById('sim-chart-wrap').style.display = 'none';
+    document.getElementById('btn-sim-play').innerHTML = '&#9654;';
+    simState = null; simFlips = null; simIncome = null; simCounts = null;
+  });
+
+  // Patch switchMap to exit sim view when switching maps
+  const _simOrigSwitchMap = switchMap;
+  switchMap = function(mapKey) {
+    if (simViewMode) exitSimView();
+    if (simPlayTimer) { clearInterval(simPlayTimer); simPlayTimer = null; }
+    simState = null;
+    document.getElementById('sim-playback').style.display   = 'none';
+    document.getElementById('sim-outcome').style.display    = 'none';
+    document.getElementById('sim-chart-wrap').style.display = 'none';
+    _simOrigSwitchMap(mapKey);
+  };
+
+  // Expose for Playwright testing
+  window.__simGetState  = () => simState;
+  window.__simGetCounts = () => simCounts;
+  window.__simCurrentTick = () => simCurrentTick;
+  window.__simSeekTick  = (t) => seekTick(t);
+  window.__simReset     = () => document.getElementById('btn-sim-reset').click();
+  window.__simRun       = () => document.getElementById('btn-sim-run').click();
+})();
+
+// ============================================================
+// END CAMPAIGN SIMULATION
+// ============================================================
 </script>
 </body>
 </html>
