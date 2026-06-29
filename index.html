@@ -108,6 +108,44 @@
   .loc-minor{pointer-events:none}
   .loc-label{pointer-events:none}
 
+  /* ---- Add-town mode + promote markers ---- */
+  .loc-promotable{cursor:pointer;pointer-events:all;transition:opacity .15s}
+  .loc-promotable:hover{opacity:1 !important}
+
+  /* ---- Add-Town mode button ---- */
+  .add-town-btn{
+    display:flex;align-items:center;gap:7px;width:100%;
+    background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;
+    padding:8px 10px;cursor:pointer;font-size:12px;color:var(--bone);
+    font-family:Inter,sans-serif;margin-top:6px;text-align:left
+  }
+  .add-town-btn:hover{border-color:var(--orange);color:var(--orange)}
+  .add-town-btn.active{border-color:var(--orange);background:#1a1e15;color:var(--orange)}
+  .add-town-btn .dot{width:8px;height:8px;border-radius:50%;background:var(--orange);flex:0 0 auto;opacity:.7}
+
+  /* ---- Delete town button in inspector ---- */
+  .delete-town-btn{
+    display:flex;align-items:center;gap:7px;width:100%;
+    background:transparent;border:1px solid #3a3f47;border-radius:5px;
+    padding:7px 10px;cursor:pointer;margin-top:12px;
+    font-size:11px;color:#8b939c;font-family:Inter,sans-serif;
+  }
+  .delete-town-btn:hover{border-color:var(--danger);color:var(--danger)}
+  .delete-town-btn .dot{width:8px;height:8px;border-radius:50%;background:var(--danger);flex:0 0 auto;opacity:.7}
+
+  /* ---- Export town-set panel ---- */
+  .export-section{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .export-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad;margin:0 0 6px;display:block}
+  .export-note{font-size:10px;color:#5a6470;line-height:1.5;margin-bottom:8px;font-family:'JetBrains Mono',monospace}
+  .export-btn{
+    display:flex;align-items:center;gap:7px;width:100%;
+    background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;
+    padding:8px 12px;cursor:pointer;font-size:12px;color:var(--bone);
+    font-family:Inter,sans-serif;margin-bottom:6px;text-align:left
+  }
+  .export-btn:hover{border-color:var(--orange);color:var(--orange)}
+  .export-btn:disabled{opacity:.4;cursor:not-allowed}
+
   /* ---- Zoom/pan overlay controls ---- */
   .map-overlay{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;z-index:3}
   .map-overlay button{
@@ -332,7 +370,33 @@
         Scroll to zoom · drag map to pan<br>
         Drag WASP town to reposition<br>
         Click a WASP town to inspect &amp; edit<br>
-        Ref locations = CfgWorlds (read-only)
+        Ref locations = CfgWorlds (promote in Add mode)
+      </div>
+
+      <div class="divider"></div>
+
+      <label>Town Design</label>
+
+      <button class="add-town-btn" id="btn-add-town">
+        <div class="dot"></div>Add Town Mode
+      </button>
+      <div style="font-size:10px;color:#5a6470;margin-top:5px;line-height:1.5">
+        Click empty map to place a new town.<br>
+        Click a ref location to promote it.
+      </div>
+
+      <div class="export-section">
+        <span class="export-label">Export Town Set</span>
+        <div class="export-note">
+          Designed towns must be placed as<br>
+          LocationLogicDepot logics at the<br>
+          commented [x,y] positions in-editor.
+        </div>
+        <button class="export-btn" id="btn-export-townset">
+          <span style="font-size:14px">&#128203;</span> Copy SQF + JSON
+        </button>
+        <span class="io-change-label" id="export-label-ta" style="display:none">SQF block + JSON (place logics at positions)</span>
+        <textarea class="io-textarea" id="export-townset-output" style="display:none;min-height:120px" readonly></textarea>
       </div>
 
     </div>
@@ -455,8 +519,12 @@ let selectedTownIdx = -1;
 // Active preset name (null = none selected)
 let activePreset = null;
 
-// WASP maps that have seed-towns data
+// WASP maps that have seed-towns data (used only to gate Reset-to-seed and preset panel)
 const WASP_MAPS = new Set(['chernarus', 'takistan']);
+
+// Add-town mode state
+let addTownMode = false;
+let addTownCounter = 0; // auto-increment for "New Town N" names
 
 // Settlement-class types shown prominently
 const SETTLEMENT_TYPES = new Set([
@@ -698,6 +766,18 @@ function renderLocations() {
     }
     circle.setAttribute('class', settlement ? (loc.type === 'NameCityCapital' ? 'loc-capital' : 'loc-city') : 'loc-minor');
 
+    // In add-town mode, make settlement circles promotable (clickable)
+    if (addTownMode && settlement && loc.name) {
+      circle.classList.add('loc-promotable');
+      circle.style.pointerEvents = 'all';
+      circle.style.cursor = 'pointer';
+      circle.setAttribute('opacity', style.opacity);
+      circle.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        addTownAt(loc.pos[0], loc.pos[1], loc.name);
+      });
+    }
+
     if (settlement) {
       gSettlements.appendChild(circle);
     } else {
@@ -727,9 +807,21 @@ function renderLocations() {
 // ============================================================
 // RENDER: WASP LAYERS (towns/rings/spawns/airports)
 // ============================================================
+
+/**
+ * Get (or lazily create) the town data structure for the active map.
+ * For seeded WASP maps (chernarus/takistan) this returns the loaded seed.
+ * For any other map it initialises an empty structure on first call so
+ * towns can be added via the campaign designer.
+ * Returns null only when townsData itself isn't loaded yet.
+ */
 function getWaspData() {
-  if (!WASP_MAPS.has(activeMap) || !townsData) return null;
-  return townsData[activeMap] || null;
+  if (!townsData) return null;
+  if (!townsData[activeMap]) {
+    // Lazily initialise an empty town structure for non-seed maps
+    townsData[activeMap] = { towns: [], spawns: [], airports: [], presets: {}, map: activeMap };
+  }
+  return townsData[activeMap];
 }
 
 function renderRings() {
@@ -874,12 +966,13 @@ function renderLabels() {
 }
 
 // ============================================================
-// WASP LAYER VISIBILITY TOGGLE (show/hide controls for non-WASP maps)
+// WASP LAYER VISIBILITY TOGGLE
+// Now all maps support towns so controls are always fully visible.
 // ============================================================
 function updateWaspControlVisibility() {
-  const hasWasp = WASP_MAPS.has(activeMap);
+  // All maps can now have towns — always show controls at full opacity
   ['wasp-layer-row', 'wasp-rings-row', 'wasp-spawns-row', 'wasp-airports-row'].forEach(id => {
-    document.getElementById(id).style.opacity = hasWasp ? '1' : '0.35';
+    document.getElementById(id).style.opacity = '1';
   });
 }
 
@@ -905,8 +998,9 @@ function renderPresetPanel() {
   const sub = document.getElementById('preset-sub');
   listEl.innerHTML = '';
 
+  // Only show preset panel for seeded WASP maps that actually have presets
   const data = getWaspData();
-  if (!data || !data.presets) {
+  if (!data || !data.presets || Object.keys(data.presets).length === 0 || !WASP_MAPS.has(activeMap)) {
     wrap.style.display = 'none';
     return;
   }
@@ -1009,19 +1103,15 @@ function switchMap(mapKey) {
   // Update brand bar
   document.getElementById('bar-map-name').textContent = mapsData[mapKey].name;
 
-  // Update stats
-  const waspData = getWaspData();
-  document.getElementById('stat-towns').textContent = waspData ? waspData.towns.length : '–';
-  document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '–';
-  document.getElementById('stat-locs').textContent   = mapsData[mapKey].locations.length;
-  document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
-
   // Clear inspector
   selectedTown = null;
   selectedTownIdx = -1;
   activePreset = null;
   document.getElementById('inspector-body').innerHTML =
-    '<div class="inspector-empty">No town selected.<br>Click any WASP town marker on the map to inspect its properties.</div>';
+    '<div class="inspector-empty">No town selected.<br>Click a town marker to inspect, or use Add Town mode to place new towns.</div>';
+
+  // Exit add-town mode on map switch
+  if (addTownMode) setAddTownMode(false);
 
   // Clip rect
   document.getElementById('map-clip-rect').setAttribute('width', SIZE);
@@ -1031,6 +1121,13 @@ function switchMap(mapKey) {
   fitMap();
   renderAll();
   renderPresetPanel();
+
+  // Update stats AFTER getWaspData() has had a chance to run (renderAll touches it)
+  const waspData = getWaspData();
+  document.getElementById('stat-towns').textContent = waspData ? waspData.towns.length : '0';
+  document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '0';
+  document.getElementById('stat-locs').textContent   = mapsData[mapKey].locations.length;
+  document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
 }
 
 // ============================================================
@@ -1070,9 +1167,9 @@ function markEdited(t) {
 
 function renderInspector(t, idx) {
   const body = document.getElementById('inspector-body');
-  const editedBadge = t._edited
-    ? `<span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--orange);margin-left:8px;border:1px solid var(--orange);border-radius:8px;padding:1px 7px">edited</span>`
-    : '';
+  const badges = [];
+  if (t._edited)  badges.push(`<span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--orange);margin-left:6px;border:1px solid var(--orange);border-radius:8px;padding:1px 7px">edited</span>`);
+  if (t._added)   badges.push(`<span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:#7fc87f;margin-left:6px;border:1px solid #7fc87f;border-radius:8px;padding:1px 7px">new</span>`);
 
   // Type checklist HTML
   const typeSet = new Set(t.type || []);
@@ -1082,8 +1179,15 @@ function renderInspector(t, idx) {
   }).join('');
 
   body.innerHTML = `
-    <div class="inspector-name">${t.name}${editedBadge}</div>
+    <div class="inspector-name" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+      <input id="insp-name" style="background:transparent;border:none;border-bottom:1px solid var(--line);color:var(--bone);font-family:Oswald,sans-serif;font-size:18px;letter-spacing:.5px;outline:none;width:auto;min-width:60px;max-width:180px;flex:1" value="${escHtml(t.name)}">
+      ${badges.join('')}
+    </div>
     <div class="inspector-pos" id="insp-pos">pos: [${t.pos[0].toFixed(1)}, ${t.pos[1].toFixed(1)}]</div>
+    <div class="inspector-row">
+      <span class="key">Dubbing</span>
+      <input class="insp-input" id="insp-dubbing" type="text" maxlength="8" value="${escHtml(t.dubbing || '+')}">
+    </div>
     <div class="inspector-row">
       <span class="key">Start SV</span>
       <input class="insp-input" id="insp-startSV" type="number" min="0" max="9999" value="${t.startSV}">
@@ -1096,12 +1200,25 @@ function renderInspector(t, idx) {
       <span class="key">Value</span>
       <input class="insp-input" id="insp-value" type="number" min="0" max="99999" value="${t.value}">
     </div>
-    <div class="inspector-row"><span class="key">Dubbing</span><span class="val">${t.dubbing || '–'}</span></div>
     <div style="margin-top:12px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad;">Type</div>
     <div class="type-checklist" style="margin-top:6px">${typeCheckHtml}</div>
+    <button class="delete-town-btn" id="btn-delete-town">
+      <div class="dot"></div>Delete town
+    </button>
   `;
 
-  // Wire up inputs
+  // Wire up name
+  document.getElementById('insp-name').addEventListener('change', (e) => {
+    const v = e.target.value.trim();
+    if (v && v !== t.name) { t.name = v; markEdited(t); renderTowns(); renderLabels(); }
+  });
+  document.getElementById('insp-name').addEventListener('focus', (e) => e.target.select());
+
+  // Wire up dubbing
+  document.getElementById('insp-dubbing').addEventListener('change', (e) => {
+    t.dubbing = e.target.value; markEdited(t);
+  });
+
   document.getElementById('insp-startSV').addEventListener('change', (e) => {
     const v = parseInt(e.target.value, 10);
     if (!isNaN(v)) { t.startSV = v; markEdited(t); refreshTownOnMap(t, idx); }
@@ -1124,6 +1241,157 @@ function renderInspector(t, idx) {
       refreshTownOnMap(t, idx);
     });
   });
+  // Delete button
+  document.getElementById('btn-delete-town').addEventListener('click', () => {
+    deleteTown(idx);
+  });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ============================================================
+// DELETE TOWN
+// ============================================================
+function deleteTown(idx) {
+  const data = getWaspData();
+  if (!data) return;
+  const t = data.towns[idx];
+  if (!t) return;
+  if (!confirm(`Delete town "${t.name}"? This cannot be undone.`)) return;
+
+  data.towns.splice(idx, 1);
+  selectedTown = null;
+  selectedTownIdx = -1;
+  document.getElementById('inspector-body').innerHTML =
+    '<div class="inspector-empty">Town deleted. Click another town or use Add Town mode.</div>';
+  renderAll();
+  updateStatTowns();
+  if (typeof updateIoButtons === 'function') updateIoButtons();
+}
+
+// ============================================================
+// ADD TOWN MODE
+// ============================================================
+function setAddTownMode(on) {
+  addTownMode = on;
+  const btn = document.getElementById('btn-add-town');
+  if (btn) btn.classList.toggle('active', on);
+  // Make the SVG cursor indicate add mode
+  svg.style.cursor = on ? 'crosshair' : '';
+  // Re-render locations so settlement markers become clickable in add mode
+  renderLocations();
+}
+
+/**
+ * Find the closest CfgWorlds settlement location within `threshold` world-metres.
+ * Returns the location object or null.
+ */
+function nearestLocation(wx, wy, threshold) {
+  const worldData = mapsData ? mapsData[activeMap] : null;
+  if (!worldData || !worldData.locations) return null;
+  let best = null, bestDist = threshold * threshold;
+  for (const loc of worldData.locations) {
+    if (!isSettlement(loc.type)) continue; // only settlements can be promoted
+    const dx = loc.pos[0] - wx;
+    const dy = loc.pos[1] - wy;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestDist) { bestDist = d2; best = loc; }
+  }
+  return best;
+}
+
+/**
+ * Create a new town at world position [wx, wy], optionally inheriting a location name.
+ */
+function addTownAt(wx, wy, inheritedName) {
+  const data = getWaspData();
+  if (!data) return;
+
+  addTownCounter++;
+  const name = inheritedName || `New Town ${addTownCounter}`;
+  const newTown = {
+    name,
+    dubbing: '+',
+    startSV: 10,
+    maxSV: 45,
+    value: 250,
+    type: ['SmallTown1'],
+    pos: [wx, wy],
+    camps: [
+      { pos: [wx + 150, wy] },
+      { pos: [wx - 150, wy] },
+    ],
+    _edited: true,
+    _added: true,
+  };
+  data.towns.push(newTown);
+  const idx = data.towns.length - 1;
+
+  renderAll();
+  updateStatTowns();
+
+  // Select the new town immediately
+  // We need to find its rendered group by idx
+  const grp = document.querySelector(`.town-marker[data-idx="${idx}"]`);
+  if (grp) selectTown(newTown, idx, grp);
+
+  if (typeof updateIoButtons === 'function') updateIoButtons();
+}
+
+function updateStatTowns() {
+  const data = getWaspData();
+  document.getElementById('stat-towns').textContent = data ? data.towns.length : '0';
+}
+
+// ============================================================
+// EXPORT TOWN SET (SQF block + JSON)
+// ============================================================
+function buildTownSetExport() {
+  const data = getWaspData();
+  if (!data || data.towns.length === 0) return '';
+
+  const sqfLines = [];
+  const jsonTowns = [];
+
+  for (const t of data.towns) {
+    const dub = t.dubbing || '+';
+    let typeArg;
+    if (!t.type || t.type.length === 0) {
+      typeArg = '"SmallTown1"';
+    } else if (t.type.length === 1) {
+      typeArg = `"${t.type[0]}"`;
+    } else {
+      typeArg = `[${t.type.map(tp => `"${tp}"`).join(',')}]`;
+    }
+
+    sqfLines.push(`// ${t.name} @ [${t.pos[0].toFixed(1)}, ${t.pos[1].toFixed(1)}]`);
+    sqfLines.push(`[this,"${t.name}","${dub}",${t.startSV},${t.maxSV},${t.value},${typeArg}] execVM "Common\\Init\\Init_Town.sqf";`);
+
+    jsonTowns.push({
+      name: t.name,
+      dubbing: dub,
+      startSV: t.startSV,
+      maxSV: t.maxSV,
+      value: t.value,
+      type: t.type || ['SmallTown1'],
+      pos: [+t.pos[0].toFixed(1), +t.pos[1].toFixed(1)],
+    });
+  }
+
+  const sqfBlock = sqfLines.join('\n');
+  const jsonBlock = JSON.stringify(jsonTowns, null, 2);
+
+  return `// ====== SQF TOWN INIT BLOCK — ${activeMap} ======
+// Place each town as a LocationLogicDepot logic object
+// at the [x, y] world position shown in the comment above each line.
+// Paste the init= line into the logic's init field in the mission editor.
+
+${sqfBlock}
+
+// ====== JSON EXPORT ======
+${jsonBlock}`;
 }
 
 // Refresh just the affected town marker + label + ring without full re-render
@@ -1150,12 +1418,14 @@ function refreshTownOnMap(t, idx) {
 let isPanning = false;
 let panStart  = { x: 0, y: 0 };
 let camStart  = { tx: 0, ty: 0 };
+let panMoved  = false; // true if the last pan gesture moved more than threshold
 
 svg.addEventListener('mousedown', evt => {
   if (evt.button !== 0) return;
   // If a town drag is already started (mousedown on town group), don't start pan
   if (dragState) return;
   isPanning = true;
+  panMoved  = false;
   panStart = { x: evt.clientX, y: evt.clientY };
   camStart = { tx: cam.tx, ty: cam.ty };
   svg.classList.add('panning');
@@ -1201,6 +1471,7 @@ window.addEventListener('mousemove', evt => {
   }
   const dx = evt.clientX - panStart.x;
   const dy = evt.clientY - panStart.y;
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) panMoved = true;
   cam.tx = camStart.tx + dx;
   cam.ty = camStart.ty + dy;
   applyTransform();
@@ -1278,6 +1549,49 @@ function updateDraggedTownPosition(t, idx) {
     labels[idx].setAttribute('y', svgY - r - 60);
   }
 }
+
+// ============================================================
+// ADD-TOWN MODE: click on empty map to place a town
+// (town mousedown already calls stopPropagation, so this only
+//  fires when clicking on the map background or a non-town element)
+// ============================================================
+svg.addEventListener('click', (evt) => {
+  if (!addTownMode) return;
+  if (panMoved) { panMoved = false; return; } // suppress after a pan gesture
+
+  const sc = svgCoords(evt);
+  const w  = svgToWorld(sc.x, sc.y);
+
+  // Clamp to map bounds
+  if (w.x < 0 || w.x > SIZE || w.y < 0 || w.y > SIZE) return;
+
+  // Check for a nearby reference location to promote
+  const PROMOTE_THRESHOLD = 800; // world metres
+  const nearby = nearestLocation(w.x, w.y, PROMOTE_THRESHOLD);
+  if (nearby) {
+    addTownAt(nearby.pos[0], nearby.pos[1], nearby.name);
+  } else {
+    addTownAt(w.x, w.y, null);
+  }
+});
+
+// ============================================================
+// KEYBOARD: Delete key removes selected town
+// ============================================================
+window.addEventListener('keydown', (evt) => {
+  if (evt.key === 'Delete' || evt.key === 'Backspace') {
+    // Only act when not typing in an input/textarea
+    const tag = document.activeElement ? document.activeElement.tagName : '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (selectedTown !== null && selectedTownIdx >= 0) {
+      deleteTown(selectedTownIdx);
+    }
+  }
+  // Escape exits add-town mode
+  if (evt.key === 'Escape' && addTownMode) {
+    setAddTownMode(false);
+  }
+});
 
 svg.addEventListener('wheel', evt => {
   evt.preventDefault();
@@ -1391,8 +1705,8 @@ async function init() {
       seedData  = JSON.parse(JSON.stringify(rawTowns)); // immutable deep copy
       townsData = JSON.parse(JSON.stringify(rawTowns)); // live mutable copy
     } else {
-      console.warn('seed-towns.json not available — WASP town layer disabled');
-      townsData = null;
+      console.warn('seed-towns.json not available — seed towns disabled; campaign designer still works');
+      townsData = {}; // empty object so getWaspData() can lazily init any map
       seedData  = null;
     }
 
@@ -1409,16 +1723,40 @@ async function init() {
       }
     });
 
+    // Wire Add Town Mode button
+    document.getElementById('btn-add-town').addEventListener('click', () => {
+      setAddTownMode(!addTownMode);
+    });
+
+    // Wire Export Town Set button
+    document.getElementById('btn-export-townset').addEventListener('click', () => {
+      const out = buildTownSetExport();
+      const label  = document.getElementById('export-label-ta');
+      const output = document.getElementById('export-townset-output');
+      if (!out) {
+        output.value = '// No towns on this map yet.';
+        label.style.display  = 'block';
+        output.style.display = 'block';
+        return;
+      }
+      label.style.display  = 'block';
+      output.style.display = 'block';
+      output.value = out;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(out).catch(() => {});
+      }
+    });
+
     requestAnimationFrame(() => {
       fitMap();
-      // Update initial stats
-      const waspData = getWaspData();
-      document.getElementById('stat-towns').textContent = waspData ? waspData.towns.length : '–';
-      document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '–';
-      document.getElementById('stat-locs').textContent   = mapsData.chernarus.locations.length;
-      document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
       renderAll();
       renderPresetPanel();
+      // Stats — use switchMap pattern (getWaspData may lazily init so read after render)
+      const waspData = getWaspData();
+      document.getElementById('stat-towns').textContent  = waspData ? waspData.towns.length : '0';
+      document.getElementById('stat-spawns').textContent = waspData ? waspData.spawns.length : '0';
+      document.getElementById('stat-locs').textContent   = mapsData.chernarus.locations.length;
+      document.getElementById('stat-size').textContent   = (SIZE / 1000).toFixed(0);
     });
   } catch (err) {
     console.error('Init failed:', err);
