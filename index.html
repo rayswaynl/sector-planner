@@ -37,10 +37,55 @@
   .brandbar .chip b{color:var(--olive)}
 
   /* ---- App layout ---- */
-  .app{display:grid;grid-template-columns:270px 1fr 300px;grid-template-rows:1fr auto;height:calc(100% - 54px)}
+  :root{--left-w:270px;--right-w:300px}
+  .app{display:grid;grid-template-columns:var(--left-w) 1fr var(--right-w);grid-template-rows:1fr auto;height:calc(100% - 54px)}
   .panel{background:var(--steel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
   .panel.right{border-right:none;border-left:1px solid var(--line)}
-  .panel header{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--gunmetal);flex:0 0 auto}
+
+  /* ---- Resizable layout: splitters ---- */
+  .splitter{
+    grid-row:1/3;position:relative;width:5px;background:var(--steel);
+    cursor:col-resize;z-index:4;flex:0 0 auto;
+    transition:background .15s;user-select:none
+  }
+  .splitter::after{
+    content:'';position:absolute;inset:0;background:var(--line);
+    opacity:.6;transition:opacity .15s
+  }
+  .splitter:hover::after,.splitter.dragging::after{opacity:1;background:var(--orange)}
+  .splitter:hover,.splitter.dragging{background:var(--steel2)}
+
+  /* ---- Collapse strip (collapsed panel replacement) ---- */
+  .panel-collapsed-strip{
+    grid-row:1/3;width:26px;background:var(--gunmetal);
+    border-right:1px solid var(--line);display:none;
+    flex-direction:column;align-items:center;justify-content:flex-start;
+    padding-top:10px;cursor:pointer;z-index:4;overflow:hidden
+  }
+  .panel-collapsed-strip.right{border-right:none;border-left:1px solid var(--line)}
+  .panel-collapsed-strip:hover{background:var(--steel2)}
+  .panel-collapsed-strip .strip-label{
+    writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:Oswald,sans-serif;font-size:11px;letter-spacing:2px;
+    color:#5a6470;margin-top:8px;pointer-events:none;white-space:nowrap
+  }
+  .panel-collapsed-strip .strip-icon{font-size:13px;color:#5a6470;flex:0 0 auto}
+  .panel-collapsed-strip:hover .strip-label,
+  .panel-collapsed-strip:hover .strip-icon{color:var(--orange)}
+
+  /* ---- Panel header collapse button ---- */
+  .panel-collapse-btn{
+    margin-left:auto;border:none;background:transparent;cursor:pointer;
+    color:#5a6470;font-size:14px;line-height:1;padding:2px 4px;border-radius:3px;
+    font-family:inherit;flex:0 0 auto
+  }
+  .panel-collapse-btn:hover{color:var(--orange);background:rgba(255,255,255,.05)}
+
+  /* ---- Maximize button ---- */
+  #btn-maximize{font-size:10px;letter-spacing:.5px}
+  #btn-maximize.active{color:var(--orange);border-color:var(--orange)}
+  .panel header{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--gunmetal);flex:0 0 auto;display:flex;align-items:center;gap:6px}
+  .panel header .hdr-text{flex:1;min-width:0}
   .panel header h2{font-size:14px;margin:0}
   .panel header .sub{font-size:11px;color:#9aa3ad;margin-top:3px;font-family:'JetBrains Mono',monospace}
   .scroll{overflow:auto;padding:12px 14px;flex:1;min-height:0}
@@ -257,9 +302,10 @@
   .map-disclaimer{font-size:10px;color:#46505b;line-height:1.5;margin-top:6px}
 
   /* ---- Mission I/O panel ---- */
-  .io-panel{border-top:1px solid var(--line);grid-column:3;display:flex;flex-direction:column;min-height:0;max-height:320px;
+  .io-panel{border-top:1px solid var(--line);grid-column:5;display:flex;flex-direction:column;min-height:0;max-height:320px;
     background:var(--steel);border-left:1px solid var(--line)}
-  .io-panel header{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--gunmetal);flex:0 0 auto}
+  .io-panel header{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--gunmetal);flex:0 0 auto;display:flex;align-items:center}
+  .io-panel header .hdr-text{flex:1;min-width:0}
   .io-panel header h2{font-size:14px;margin:0}
   .io-panel header .sub{font-size:11px;color:#9aa3ad;margin-top:3px;font-family:'JetBrains Mono',monospace}
   .io-body{overflow:auto;padding:12px 14px;flex:1;min-height:0}
@@ -380,11 +426,16 @@
 <div class="app">
 
   <!-- ====== LEFT: Controls ====== -->
-  <div class="panel">
+  <div class="panel" id="panel-left">
     <header>
-      <h2>Controls</h2>
-      <div class="sub">map · filters · legend</div>
+      <div class="hdr-text">
+        <h2>Controls</h2>
+        <div class="sub">map · filters · legend</div>
+      </div>
+      <button class="panel-collapse-btn" id="btn-collapse-left" title="Collapse controls panel">&#8249;</button>
     </header>
+    <!-- collapsed strip (shown when left panel is collapsed) -->
+
     <div class="scroll">
 
       <label>Map</label>
@@ -620,6 +671,15 @@
     </div>
   </div>
 
+  <!-- ====== LEFT collapsed strip (shown when left panel collapsed) ====== -->
+  <div class="panel-collapsed-strip" id="strip-left" title="Expand controls panel">
+    <span class="strip-icon">&#8250;</span>
+    <span class="strip-label">Controls</span>
+  </div>
+
+  <!-- ====== Splitter: left | map ====== -->
+  <div class="splitter" id="splitter-left" title="Drag to resize"></div>
+
   <!-- ====== CENTRE: Map stage ====== -->
   <div class="stage" id="stage" style="grid-row:1/3">
     <svg id="map-svg" xmlns="http://www.w3.org/2000/svg">
@@ -671,16 +731,29 @@
       <button id="btn-zoom-in" title="Zoom in">+</button>
       <button id="btn-zoom-out" title="Zoom out">−</button>
       <button id="btn-zoom-fit" title="Fit map" style="font-size:11px">FIT</button>
+      <button id="btn-maximize" title="Maximize map (collapse both panels)">&#9707;</button>
     </div>
     <div class="coords-badge" id="coords-badge">x: — y: —</div>
     <div class="scale-badge" id="scale-badge">—</div>
   </div>
 
+  <!-- ====== Splitter: map | right ====== -->
+  <div class="splitter" id="splitter-right" title="Drag to resize"></div>
+
+  <!-- ====== RIGHT collapsed strip (shown when right panel collapsed) ====== -->
+  <div class="panel-collapsed-strip right" id="strip-right" title="Expand inspector panel">
+    <span class="strip-icon">&#8249;</span>
+    <span class="strip-label">Inspector</span>
+  </div>
+
   <!-- ====== RIGHT: Inspector ====== -->
-  <div class="panel right" style="grid-row:1">
+  <div class="panel right" id="panel-right" style="grid-row:1">
     <header>
-      <h2>Inspector</h2>
-      <div class="sub">click a WASP town to inspect</div>
+      <div class="hdr-text">
+        <h2>Inspector</h2>
+        <div class="sub">click a WASP town to inspect</div>
+      </div>
+      <button class="panel-collapse-btn" id="btn-collapse-right" title="Collapse inspector panel">&#8250;</button>
     </header>
     <div class="scroll" id="inspector-body">
       <div class="inspector-empty">No town selected.<br>Click any WASP town marker on the map to inspect its properties.</div>
@@ -690,8 +763,10 @@
   <!-- ====== RIGHT-BOTTOM: Mission I/O ====== -->
   <div class="io-panel" id="io-panel" style="grid-row:2">
     <header>
-      <h2>Mission I/O</h2>
-      <div class="sub" id="io-sub">load or export mission.sqm</div>
+      <div class="hdr-text">
+        <h2>Mission I/O</h2>
+        <div class="sub" id="io-sub">load or export mission.sqm</div>
+      </div>
     </header>
     <div class="io-body">
       <!-- File drop zone -->
@@ -3786,6 +3861,242 @@ refreshTownOnMap = function(t, idx) {
   if (document.getElementById('show-income').checked) renderIncomeOverlay();
   if (document.getElementById('show-frontline').checked) renderFrontlineOverlay();
 };
+
+// ============================================================
+// RESIZABLE LAYOUT: splitters, collapse, maximize, persistence
+// ============================================================
+(function(){
+  const LS_KEY = 'sp-layout-v1';
+  const MIN_SIDE = 180, MAX_SIDE = 460, MIN_MAP = 300;
+  const COLLAPSED_W = 26; // width of the collapsed strip
+
+  // --- State ---
+  let leftW      = 270;
+  let rightW     = 300;
+  let leftCollapsed  = false;
+  let rightCollapsed = false;
+  let maximized  = false;
+
+  // --- Element refs ---
+  const app          = document.querySelector('.app');
+  const panelLeft    = document.getElementById('panel-left');
+  const panelRight   = document.getElementById('panel-right');
+  const presetWrap   = document.getElementById('preset-panel-wrap');
+  const ioPanel      = document.getElementById('io-panel');
+  const stripLeft    = document.getElementById('strip-left');
+  const stripRight   = document.getElementById('strip-right');
+  const splitterL    = document.getElementById('splitter-left');
+  const splitterR    = document.getElementById('splitter-right');
+  const btnColL      = document.getElementById('btn-collapse-left');
+  const btnColR      = document.getElementById('btn-collapse-right');
+  const btnMax       = document.getElementById('btn-maximize');
+  const stage        = document.getElementById('stage');
+
+  // --- Load persisted state ---
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    if (saved.leftW  && saved.leftW  >= MIN_SIDE && saved.leftW  <= MAX_SIDE) leftW  = saved.leftW;
+    if (saved.rightW && saved.rightW >= MIN_SIDE && saved.rightW <= MAX_SIDE) rightW = saved.rightW;
+    leftCollapsed  = !!saved.leftCollapsed;
+    rightCollapsed = !!saved.rightCollapsed;
+    maximized      = !!saved.maximized;
+  } catch(e) {}
+
+  // --- Save state ---
+  function saveState() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({ leftW, rightW, leftCollapsed, rightCollapsed, maximized }));
+    } catch(e) {}
+  }
+
+  // --- Apply layout to DOM ---
+  // Grid: col1=[left/strip] col2=[splitterL] col3=[stage] col4=[splitterR] col5=[right/strip]
+  // All elements get explicit grid-column so DOM order doesn't matter.
+  function applyLayout() {
+    const lCollapsed = maximized || leftCollapsed;
+    const rCollapsed = maximized || rightCollapsed;
+
+    // Compute column widths
+    const lW = lCollapsed ? COLLAPSED_W : leftW;
+    const rW = rCollapsed ? COLLAPSED_W : rightW;
+    app.style.gridTemplateColumns = `${lW}px 5px 1fr 5px ${rW}px`;
+
+    // Assign explicit grid-column to every element that participates in the grid
+    // Left column (col 1) — panel OR strip (only one visible at a time)
+    panelLeft.style.gridColumn  = '1';
+    presetWrap.style.gridColumn = '1';
+    stripLeft.style.gridColumn  = '1';
+    // Left splitter (col 2)
+    splitterL.style.gridColumn  = '2';
+    // Stage (col 3, already has grid-row:1/3 in HTML)
+    stage.style.gridColumn      = '3';
+    // Right splitter (col 4)
+    splitterR.style.gridColumn  = '4';
+    // Right column (col 5)
+    stripRight.style.gridColumn = '5';
+    panelRight.style.gridColumn = '5';
+    ioPanel.style.gridColumn    = '5';
+
+    // Span both grid rows for strips and splitters
+    stripLeft.style.gridRow  = '1 / 3';
+    stripRight.style.gridRow = '1 / 3';
+    splitterL.style.gridRow  = '1 / 3';
+    splitterR.style.gridRow  = '1 / 3';
+    panelLeft.style.gridRow  = '1 / 3'; // left panel spans both rows (preset is child-of-left or sibling)
+
+    // Show/hide panels vs strips
+    // Grid row assignments
+    // Left panel = row 1, preset wrap = row 2 (both col 1)
+    // Strip left spans rows 1/3 (col 1 when collapsed)
+    // Stage spans rows 1/3 (col 3)
+    // Right panel = row 1, io-panel = row 2 (both col 5)
+    // Strip right spans rows 1/3 (col 5 when collapsed)
+    // Splitters span rows 1/3
+    panelLeft.style.gridRow  = '1';
+    presetWrap.style.gridRow = '2';
+    stripLeft.style.gridRow  = '1 / 3';
+    splitterL.style.gridRow  = '1 / 3';
+    splitterR.style.gridRow  = '1 / 3';
+    panelRight.style.gridRow = '1';
+    ioPanel.style.gridRow    = '2';
+    stripRight.style.gridRow = '1 / 3';
+
+    // Show/hide panels vs strips
+    panelLeft.style.display    = lCollapsed ? 'none' : 'flex';
+    presetWrap.style.display   = lCollapsed ? 'none'
+      : (presetWrap.getAttribute('data-visible') === '1' ? 'flex' : 'none');
+    stripLeft.style.display    = lCollapsed ? 'flex' : 'none';
+    splitterL.style.display    = lCollapsed ? 'none' : 'block';
+
+    panelRight.style.display   = rCollapsed ? 'none' : 'flex';
+    ioPanel.style.display      = rCollapsed ? 'none' : 'flex';
+    stripRight.style.display   = rCollapsed ? 'flex' : 'none';
+    splitterR.style.display    = rCollapsed ? 'none' : 'block';
+
+    // Chevron direction on collapse buttons
+    if (btnColL) btnColL.innerHTML = leftCollapsed ? '&#8250;' : '&#8249;';
+    if (btnColR) btnColR.innerHTML = rightCollapsed ? '&#8249;' : '&#8250;';
+    if (btnMax)  {
+      btnMax.classList.toggle('active', maximized);
+      btnMax.title = maximized ? 'Restore panels' : 'Maximize map';
+    }
+  }
+
+  // Track whether preset panel was visible so we can restore it on un-collapse
+  const origPresetDisplay = presetWrap.style.display;
+  if (presetWrap.style.display !== 'none') presetWrap.setAttribute('data-visible','1');
+
+  // Watch preset panel display so we track whether it was shown
+  const presetObserver = new MutationObserver(() => {
+    if (presetWrap.style.display !== 'none') presetWrap.setAttribute('data-visible','1');
+  });
+  presetObserver.observe(presetWrap, { attributes: true, attributeFilter: ['style'] });
+
+  // --- Collapse left ---
+  function collapseLeft() {
+    leftCollapsed = !leftCollapsed;
+    if (leftCollapsed && maximized) maximized = false;
+    applyLayout();
+    saveState();
+    schedFit();
+  }
+  function collapseRight() {
+    rightCollapsed = !rightCollapsed;
+    if (rightCollapsed && maximized) maximized = false;
+    applyLayout();
+    saveState();
+    schedFit();
+  }
+  function toggleMaximize() {
+    maximized = !maximized;
+    if (maximized) {
+      // un-collapse individual flags when maximizing, so restore works
+      leftCollapsed  = false;
+      rightCollapsed = false;
+    }
+    applyLayout();
+    saveState();
+    schedFit();
+  }
+
+  if (btnColL) btnColL.addEventListener('click', collapseLeft);
+  if (btnColR) btnColR.addEventListener('click', collapseRight);
+  if (btnMax)  btnMax.addEventListener('click', toggleMaximize);
+  stripLeft.addEventListener('click',  collapseLeft);
+  stripRight.addEventListener('click', collapseRight);
+
+  // --- Splitter drag ---
+  let dragging = null; // 'left' | 'right'
+  let dragStartX = 0;
+  let dragStartW = 0;
+
+  function onSplitterMousedown(side, evt) {
+    evt.preventDefault();
+    dragging = side;
+    dragStartX = evt.clientX;
+    dragStartW = side === 'left' ? leftW : rightW;
+    (side === 'left' ? splitterL : splitterR).classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  splitterL.addEventListener('mousedown', e => onSplitterMousedown('left',  e));
+  splitterR.addEventListener('mousedown', e => onSplitterMousedown('right', e));
+
+  // Debounced fitMap
+  let fitTimer = null;
+  function schedFit() {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(() => { if (typeof fitMap === 'function' && mapsData) fitMap(); }, 60);
+  }
+
+  window.addEventListener('mousemove', evt => {
+    if (!dragging) return;
+    const dx = evt.clientX - dragStartX;
+    const appW = app.getBoundingClientRect().width;
+
+    if (dragging === 'left') {
+      // Left splitter: drag right = make left panel wider
+      let newW = Math.round(dragStartW + dx);
+      newW = Math.max(MIN_SIDE, Math.min(MAX_SIDE, newW));
+      // ensure map keeps a minimum width
+      const rActual = rightCollapsed || maximized ? COLLAPSED_W : rightW;
+      const mapAvail = appW - newW - rActual - 10; // 10 = two 5px splitters
+      if (mapAvail < MIN_MAP) newW = appW - rActual - 10 - MIN_MAP;
+      newW = Math.max(MIN_SIDE, Math.min(MAX_SIDE, newW));
+      leftW = newW;
+    } else {
+      // Right splitter: drag left = make right panel wider
+      let newW = Math.round(dragStartW - dx);
+      newW = Math.max(MIN_SIDE, Math.min(MAX_SIDE, newW));
+      const lActual = leftCollapsed || maximized ? COLLAPSED_W : leftW;
+      const mapAvail = appW - newW - lActual - 10;
+      if (mapAvail < MIN_MAP) newW = appW - lActual - 10 - MIN_MAP;
+      newW = Math.max(MIN_SIDE, Math.min(MAX_SIDE, newW));
+      rightW = newW;
+    }
+
+    applyLayout();
+    schedFit();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    (dragging === 'left' ? splitterL : splitterR).classList.remove('dragging');
+    dragging = null;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    saveState();
+    schedFit();
+  });
+
+  // --- Initial apply ---
+  applyLayout();
+
+  // After map initializes, fit again in case layout shifted
+  window.addEventListener('load', () => { schedFit(); });
+
+})();
 
 init();
 </script>
