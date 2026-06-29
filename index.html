@@ -188,6 +188,47 @@
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-thumb{background:var(--steel2);border-radius:4px}
   ::-webkit-scrollbar-track{background:transparent}
+
+  /* ---- Mission I/O panel ---- */
+  .io-panel{border-top:1px solid var(--line);grid-column:3;display:flex;flex-direction:column;min-height:0;max-height:320px;
+    background:var(--steel);border-left:1px solid var(--line)}
+  .io-panel header{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--gunmetal);flex:0 0 auto}
+  .io-panel header h2{font-size:14px;margin:0}
+  .io-panel header .sub{font-size:11px;color:#9aa3ad;margin-top:3px;font-family:'JetBrains Mono',monospace}
+  .io-body{overflow:auto;padding:12px 14px;flex:1;min-height:0}
+
+  .io-dropzone{
+    border:2px dashed var(--line);border-radius:7px;padding:16px 12px;text-align:center;
+    cursor:pointer;font-size:12px;color:#8b939c;transition:border-color .15s;position:relative;margin-bottom:10px
+  }
+  .io-dropzone:hover,.io-dropzone.drag-over{border-color:var(--orange);color:var(--bone)}
+  .io-dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .io-dropzone .icon{font-size:20px;display:block;margin-bottom:4px}
+
+  .io-btn{
+    display:flex;align-items:center;gap:7px;width:100%;
+    background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;
+    padding:8px 12px;cursor:pointer;font-size:12px;color:var(--bone);
+    font-family:Inter,sans-serif;margin-bottom:6px;text-align:left
+  }
+  .io-btn:hover:not(:disabled){border-color:var(--orange);color:var(--orange)}
+  .io-btn:disabled{opacity:.4;cursor:not-allowed}
+  .io-btn .icon{font-size:14px;flex:0 0 auto}
+
+  .io-status{font-size:11px;font-family:'JetBrains Mono',monospace;padding:6px 8px;
+    border-radius:5px;margin-bottom:8px;line-height:1.5}
+  .io-status.ok{background:rgba(92,101,54,.25);color:#b8c480;border:1px solid #5c6536}
+  .io-status.err{background:rgba(192,57,43,.18);color:#e07060;border:1px solid var(--danger)}
+  .io-status.info{background:rgba(42,47,54,.6);color:#9aa3ad;border:1px solid var(--line)}
+
+  .io-textarea{
+    width:100%;min-height:80px;max-height:180px;resize:vertical;
+    background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;
+    color:#b0bbc8;font-family:'JetBrains Mono',monospace;font-size:10px;
+    padding:7px 9px;outline:none;line-height:1.5
+  }
+  .io-textarea:focus{border-color:var(--orange)}
+  .io-change-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad;margin:10px 0 5px;display:block}
 </style>
 </head>
 <body>
@@ -354,13 +395,46 @@
   </div>
 
   <!-- ====== RIGHT: Inspector ====== -->
-  <div class="panel right" style="grid-row:1/3">
+  <div class="panel right" style="grid-row:1">
     <header>
       <h2>Inspector</h2>
       <div class="sub">click a WASP town to inspect</div>
     </header>
     <div class="scroll" id="inspector-body">
       <div class="inspector-empty">No town selected.<br>Click any WASP town marker on the map to inspect its properties.</div>
+    </div>
+  </div>
+
+  <!-- ====== RIGHT-BOTTOM: Mission I/O ====== -->
+  <div class="io-panel" id="io-panel" style="grid-row:2">
+    <header>
+      <h2>Mission I/O</h2>
+      <div class="sub" id="io-sub">load or export mission.sqm</div>
+    </header>
+    <div class="io-body">
+      <!-- File drop zone -->
+      <div class="io-dropzone" id="io-dropzone">
+        <span class="icon">&#128196;</span>
+        Drop <b>mission.sqm</b> here or click to browse
+        <input type="file" id="io-file-input" accept=".sqm,.txt">
+      </div>
+
+      <!-- Status indicator -->
+      <div class="io-status info" id="io-status">No file loaded — using seed data.</div>
+
+      <!-- Download modified .sqm (only when a file is loaded) -->
+      <button class="io-btn" id="btn-download-sqm" disabled title="Download modified mission.sqm">
+        <span class="icon">&#8659;</span> Download modified mission.sqm
+      </button>
+
+      <!-- Change-list export (always available when edits exist) -->
+      <button class="io-btn" id="btn-export-changes" disabled title="Copy change-list to clipboard">
+        <span class="icon">&#128203;</span> Copy change-list
+      </button>
+
+      <!-- Change-list output textarea -->
+      <span class="io-change-label" id="io-change-label" style="display:none">Change-list (paste into SQM or apply manually)</span>
+      <textarea class="io-textarea" id="io-change-output" style="display:none" readonly></textarea>
     </div>
   </div>
 
@@ -904,6 +978,7 @@ function renderPresetPanel() {
 function markWaspDataEdited() {
   const data = getWaspData();
   if (data) data._presetsEdited = true;
+  if (typeof updateIoButtons === 'function') updateIoButtons();
 }
 
 // ============================================================
@@ -990,6 +1065,7 @@ function selectTown(t, idx, grpEl) {
 
 function markEdited(t) {
   t._edited = true;
+  if (typeof updateIoButtons === 'function') updateIoButtons();
 }
 
 function renderInspector(t, idx) {
@@ -1355,6 +1431,588 @@ const ro = new ResizeObserver(() => {
   fitMap();
 });
 ro.observe(document.getElementById('stage'));
+
+// ============================================================
+// TASK 4: MISSION I/O
+// ============================================================
+
+// ---- State ----
+// loadedSqm: the raw pasted text (retained verbatim for in-place editing)
+// loadedSqmMap: which map it belongs to ('chernarus'/'takistan')
+// loadedSqmIndex: Map<townName, {posStart,posEnd,initStart,initEnd}> — byte spans
+// loadedSqmOriginals: deep copy of towns/presets as parsed from the pasted file (for diff)
+// loadedSqmWfLogicInitSpan: {start,end} of the entire init="..." string (raw, doubled) for WF_Logic
+let loadedSqm           = null;
+let loadedSqmMap        = null;
+let loadedSqmIndex      = null; // Map<name, {posStart,posEnd,initStart,initEnd}>
+let loadedSqmOriginals  = null; // deep copy at load time
+let loadedSqmWfLogicInitSpan = null; // {start, end} in loadedSqm
+
+// ============================================================
+// SQM PARSER (JS port of tools/extract_towns.py)
+// ============================================================
+
+/** Find matching closing brace starting at braceIdx (where text[braceIdx] === '{') */
+function sqmFindBlock(text, braceIdx) {
+  let depth = 0;
+  for (let i = braceIdx; i < text.length; i++) {
+    if (text[i] === '{') {
+      depth++;
+      if (depth === 1) { /* body_start = i+1 */ }
+    } else if (text[i] === '}') {
+      depth--;
+      if (depth === 0) return { bodyStart: braceIdx + 1, bodyEnd: i };
+    }
+  }
+  return null;
+}
+
+/** Un-double .sqm quote escaping: "" → " */
+function sqmUndouble(s) { return s.replace(/""/g, '"'); }
+
+/** Double-encode for writing back into .sqm: " → "" */
+function sqmDouble(s) { return s.replace(/"/g, '""'); }
+
+/** Parse position[]={x,alt,y} → [x, y] */
+function sqmParsePos(block) {
+  const m = block.match(/position\[\]\s*=\s*\{([^}]+)\}/);
+  if (!m) return null;
+  const parts = m[1].split(',').map(p => parseFloat(p.trim()));
+  if (parts.length < 3) return null;
+  return [parts[0], parts[2]]; // [x, y] — index 0=x, 2=y (index 1 is altitude)
+}
+
+/** Parse the full position[]={...} original text within a block */
+function sqmParsePosRaw(block) {
+  const m = block.match(/position\[\]\s*=\s*\{[^}]+\}/);
+  return m ? m[0] : null;
+}
+
+/**
+ * Parse depot init= args (from un-doubled string).
+ * Returns {name, dubbing, startSV, maxSV, value, type:[...]} or null.
+ */
+function sqmParseInitArgs(initRaw) {
+  // Match: [this,"Name","Dub",startSV,maxSV,value,typeArg]
+  const re = /\[this\s*,\s*"([^"]+)"\s*,\s*"([^"]*)"\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\[.*?\]|"[^"]*")\s*\]/s;
+  const m = initRaw.match(re);
+  if (!m) return null;
+  const [, name, dub, startSV, maxSV, value, typeRaw] = m;
+  let types;
+  if (typeRaw.trim().startsWith('[')) {
+    types = [...typeRaw.matchAll(/"([^"]+)"/g)].map(x => x[1]);
+  } else {
+    const inner = typeRaw.match(/"([^"]+)"/);
+    types = inner ? [inner[1]] : [];
+  }
+  return { name, dubbing: dub, startSV: parseInt(startSV), maxSV: parseInt(maxSV), value: parseInt(value), type: types };
+}
+
+/** Parse Towns_Removed* arrays from WF_Logic init (un-doubled) */
+const PRESET_NAMES = ['XSmall','Small','Medium','Large','BigTowns','CentralLine','SmallTowns'];
+function sqmParsePresets(initRaw) {
+  const presets = {};
+  for (const name of PRESET_NAMES) {
+    const re = new RegExp('Towns_Removed' + name + '[""]*\\s*,\\s*\\[([^\\]]*?)\\]', 's');
+    const m = initRaw.match(re);
+    if (m) {
+      presets[name] = [...m[1].matchAll(/"([^"]+)"/g)].map(x => x[1]);
+    }
+  }
+  return presets;
+}
+
+/**
+ * Main parser: extract towns, spawns, airports, presets from raw sqm text.
+ * Also builds the index: Map<townName, {posStart,posEnd,initStart,initEnd}>
+ * where positions are character offsets into the raw text.
+ * Also returns wfLogicInitSpan: {start,end} of the raw init="..." value span.
+ */
+function sqmParse(text) {
+  const towns   = [];
+  const spawns  = [];
+  const airports = [];
+  let presets   = {};
+  const index   = new Map(); // name → {posStart,posEnd,initStart,initEnd}
+  let wfLogicInitSpan = null;
+
+  // Find all vehicle="<type>" occurrences
+  const vehicleRe = /vehicle\s*=\s*"(LocationLogicDepot|LocationLogicStart|LocationLogicAirport|Logic)"/g;
+  const wfLogicRe = /text\s*=\s*"WF_Logic"/;
+  // Regex to find the raw init="..." (with doubled quotes inside)
+  // We need to capture the entire value including all doubled quotes
+  const initValRe = /init\s*=\s*"((?:[^"\\]|""|\\.)*?)"\s*;/g;
+
+  let m;
+  while ((m = vehicleRe.exec(text)) !== null) {
+    const vtype = m[1];
+    const vmPos = m.index;
+
+    // Walk backwards to find "class Item0 {" before this position
+    const preceding = text.slice(0, vmPos);
+    const item0Re = /class\s+Item0\s*\{/g;
+    let lastItem0 = null;
+    let im;
+    // Reset + find all matches up to vmPos
+    item0Re.lastIndex = 0;
+    while ((im = item0Re.exec(preceding)) !== null) lastItem0 = im;
+    if (!lastItem0) continue;
+
+    // Find the opening brace of Item0
+    const braceIdx = lastItem0.index + lastItem0[0].length - 1; // index of '{'
+    const block = sqmFindBlock(text, braceIdx);
+    if (!block) continue;
+    const { bodyStart, bodyEnd } = block;
+    const item0Body = text.slice(bodyStart, bodyEnd);
+
+    // Sanity: vehicle= must be inside this block
+    if (vmPos < bodyStart || vmPos > bodyEnd) continue;
+
+    const posXY = sqmParsePos(item0Body);
+    if (!posXY) continue;
+
+    if (vtype === 'LocationLogicDepot') {
+      // Find init= in the item0 body
+      // Regex for raw init value with doubled quotes
+      const initRe = /init\s*=\s*"((?:[^"]|"")*)"\s*;/g;
+      let initM = null;
+      // Search for init= inside bodyStart..bodyEnd
+      const bodyText = item0Body;
+      const initMatch = bodyText.match(/\binit\s*=\s*"((?:[^"]|"")*)"\s*;/);
+      if (!initMatch) continue;
+      const initRaw = sqmUndouble(initMatch[1]);
+      const parsed = sqmParseInitArgs(initRaw);
+      if (!parsed) continue;
+      parsed.pos = posXY;
+
+      // Build index spans — locate position[]= and init= in original text
+      // Their offsets are bodyStart + offset-within-body
+      const posMatchInBody = bodyText.match(/position\[\]\s*=\s*\{[^}]+\}/);
+      const initMatchInBody = bodyText.match(/\binit\s*=\s*"(?:[^"]|"")*"\s*;/);
+
+      // Include the trailing semicolon in the position span so replacement is clean
+      const posMatchInBodyFull = bodyText.match(/position\[\]\s*=\s*\{[^}]+\}\s*;/);
+      const posMatchInBodyNoSemi = bodyText.match(/position\[\]\s*=\s*\{[^}]+\}/);
+      const posMatch = posMatchInBodyFull || posMatchInBodyNoSemi;
+
+      if (posMatch && initMatchInBody) {
+        const posBodyOff  = bodyText.indexOf(posMatch[0]);
+        const initBodyOff = bodyText.indexOf(initMatchInBody[0]);
+        index.set(parsed.name, {
+          posStart:  bodyStart + posBodyOff,
+          posEnd:    bodyStart + posBodyOff + posMatch[0].length,
+          initStart: bodyStart + initBodyOff,
+          initEnd:   bodyStart + initBodyOff + initMatchInBody[0].length,
+          // Store originals for no-op detection
+          origPos: posXY.slice(),
+          origStartSV: parsed.startSV,
+          origMaxSV:   parsed.maxSV,
+          origValue:   parsed.value,
+          origType:    parsed.type.slice(),
+          // Whether the span already includes semicolon
+          hasSemicolon: !!posMatchInBodyFull,
+          // Raw strings for byte-identical no-op
+          rawPosStr:  posMatch[0],
+          rawInitStr: initMatchInBody[0],
+        });
+      }
+
+      towns.push(parsed);
+
+    } else if (vtype === 'LocationLogicStart') {
+      spawns.push({ pos: posXY, side: null, spawn_pos: null });
+
+    } else if (vtype === 'LocationLogicAirport') {
+      airports.push({ pos: posXY });
+
+    } else if (vtype === 'Logic') {
+      if (wfLogicRe.test(item0Body)) {
+        const initRe = /\binit\s*=\s*"((?:[^"]|"")*)"\s*;/;
+        const wfInitM = item0Body.match(initRe);
+        if (wfInitM) {
+          const initRaw = sqmUndouble(wfInitM[1]);
+          presets = sqmParsePresets(initRaw);
+          // Find exact span of this init="..." in the full text
+          const wfInitInBody = item0Body.indexOf(wfInitM[0]);
+          if (wfInitInBody !== -1) {
+            wfLogicInitSpan = {
+              start: bodyStart + wfInitInBody,
+              end:   bodyStart + wfInitInBody + wfInitM[0].length,
+            };
+          }
+        }
+      }
+    }
+  }
+
+  return { towns, spawns, airports, presets, index, wfLogicInitSpan };
+}
+
+/** Detect map from sqm text content (look for mission folder name embedded in comments or paths) */
+function detectMapFromSqm(text) {
+  // Heuristic: chernarus towns exist; look for characteristic town names
+  if (/Kamenka|Cherno|Elektrozavodsk/i.test(text)) return 'chernarus';
+  if (/Zargabad|Rasman|Feruz/i.test(text)) return 'takistan';
+  return null;
+}
+
+// ============================================================
+// CANONICAL INIT STRING BUILDER
+// Produces the correct init= line for a depot town, ready to write back.
+// Output: the full `init="...";` assignment (with doubled quotes, as in .sqm)
+// ============================================================
+function buildInitStr(t) {
+  // typeArg: single type → "TinyTown1", multiple → ["A","B"]
+  let typeArg;
+  if (t.type.length === 1) {
+    typeArg = `"${t.type[0]}"`;
+  } else {
+    typeArg = `[${t.type.map(tp => `"${tp}"`).join(',')}]`;
+  }
+  // Un-doubled form: [this,"Name","Dub",sv,maxsv,val,typeArg] execVM "...";...
+  // The dubbing field (t.dubbing or "+")
+  const dub = t.dubbing || '+';
+  const inner = `nullReturn = [this,"${t.name}","${dub}",${t.startSV},${t.maxSV},${t.value},${typeArg}] execVM "Common\\Init\\Init_Town.sqf";this enableSimulation false;`;
+  // Double-encode for .sqm
+  const doubled = sqmDouble(inner);
+  return `init="${doubled}";`;
+}
+
+/** Build position[]={x,alt,y}; string.
+ *  We preserve the original alt value from the raw span when available.
+ *  span: the index entry (may have hasSemicolon flag). */
+function buildPosStr(town, span) {
+  // Extract alt from original raw position string if we have it
+  let alt = 0;
+  const rawPosStr = span ? span.rawPosStr : null;
+  if (rawPosStr) {
+    const m = rawPosStr.match(/position\[\]\s*=\s*\{([^}]+)\}/);
+    if (m) {
+      const parts = m[1].split(',').map(p => parseFloat(p.trim()));
+      if (parts.length >= 2) alt = parts[1];
+    }
+  }
+  // Include semicolon only if the span already included it (so we replace like-for-like)
+  const semi = (span && span.hasSemicolon) ? ';' : '';
+  return `position[]={${town.pos[0]},${alt},${town.pos[1]}}${semi}`;
+}
+
+/** Build the WF_Logic init value (un-doubled) with updated presets. */
+function buildWfLogicInit(originalInitRaw, newPresets) {
+  let result = originalInitRaw;
+  for (const name of PRESET_NAMES) {
+    if (!(name in newPresets)) continue;
+    const towns = newPresets[name];
+    const newArr = towns.map(n => `"${n}"`).join(',');
+    const re = new RegExp('(Towns_Removed' + name + '[""]*\\s*,\\s*\\[)[^\\]]*?(\\])', 's');
+    result = result.replace(re, (_, pre, suf) => pre + newArr + suf);
+  }
+  return result;
+}
+
+// ============================================================
+// PRODUCE MODIFIED SQM TEXT
+// Only touches changed towns and changed presets. Everything else is byte-identical.
+// ============================================================
+function produceSqmOutput() {
+  if (!loadedSqm || !loadedSqmIndex || !loadedSqmOriginals) return null;
+  const data = townsData && townsData[loadedSqmMap];
+  if (!data) return null;
+
+  // Build list of replacement ranges (sorted by start), then apply in reverse
+  const replacements = []; // {start, end, text}
+
+  // --- Town replacements ---
+  for (const t of data.towns) {
+    const span = loadedSqmIndex.get(t.name);
+    if (!span) continue;
+    const orig = loadedSqmOriginals.townsByName.get(t.name);
+    if (!orig) continue;
+
+    const posChanged  = Math.abs(t.pos[0] - orig.pos[0]) > 0.0001 || Math.abs(t.pos[1] - orig.pos[1]) > 0.0001;
+    const attrChanged = t.startSV !== orig.startSV || t.maxSV !== orig.maxSV ||
+                        t.value !== orig.value ||
+                        JSON.stringify(t.type.slice().sort()) !== JSON.stringify(orig.type.slice().sort());
+
+    if (!posChanged && !attrChanged) continue; // unchanged → skip entirely (byte-identical)
+
+    if (posChanged) {
+      replacements.push({
+        start: span.posStart, end: span.posEnd,
+        text: buildPosStr(t, span),
+      });
+    }
+    if (attrChanged) {
+      replacements.push({
+        start: span.initStart, end: span.initEnd,
+        text: buildInitStr(t),
+      });
+    }
+  }
+
+  // --- Preset replacements ---
+  if (loadedSqmWfLogicInitSpan && data._presetsEdited) {
+    const origInitSpan = loadedSqmWfLogicInitSpan;
+    const rawInitFull = loadedSqm.slice(origInitSpan.start, origInitSpan.end);
+    // Extract the inner value (raw, doubled)
+    const innerM = rawInitFull.match(/^init\s*=\s*"((?:[^"]|"")*)"\s*;$/s);
+    if (innerM) {
+      const undoubledInit = sqmUndouble(innerM[1]);
+      const newInit = buildWfLogicInit(undoubledInit, data.presets);
+      const newInitStr = 'init="' + sqmDouble(newInit) + '";';
+      replacements.push({
+        start: origInitSpan.start, end: origInitSpan.end,
+        text: newInitStr,
+      });
+    }
+  }
+
+  if (replacements.length === 0) {
+    // Absolutely no changes — return verbatim
+    return loadedSqm;
+  }
+
+  // Sort by start position descending so we can splice without shifting indices
+  replacements.sort((a, b) => b.start - a.start);
+
+  let out = loadedSqm;
+  for (const r of replacements) {
+    out = out.slice(0, r.start) + r.text + out.slice(r.end);
+  }
+  return out;
+}
+
+// ============================================================
+// CHANGE-LIST EXPORT (seeded mode — no loaded sqm)
+// Outputs new position[]= and init= lines for each edited town.
+// ============================================================
+function buildChangeList() {
+  const data = getWaspData();
+  if (!data) return '';
+  const lines = [];
+
+  for (const t of data.towns) {
+    if (!t._edited) continue;
+    lines.push(`// === ${t.name} ===`);
+    lines.push(buildPosStr(t, { hasSemicolon: true, rawPosStr: null }));
+    lines.push(buildInitStr(t));
+    lines.push('');
+  }
+
+  if (data._presetsEdited && data.presets) {
+    lines.push('// === Preset arrays (WF_Logic init) ===');
+    for (const name of PRESET_NAMES) {
+      if (!data.presets[name]) continue;
+      const arr = data.presets[name].map(n => `""${n}""`).join(',');
+      lines.push(`this setVariable [""Towns_Removed${name}"",[${arr}]];`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+// ============================================================
+// IO STATUS HELPERS
+// ============================================================
+function setIoStatus(msg, type = 'info') {
+  const el = document.getElementById('io-status');
+  el.textContent = msg;
+  el.className = 'io-status ' + type;
+}
+
+function updateIoButtons() {
+  const data = getWaspData();
+  const hasEdits = data && (data.towns.some(t => t._edited) || data._presetsEdited);
+  const hasSqm = !!loadedSqm;
+
+  document.getElementById('btn-download-sqm').disabled = !hasSqm;
+  document.getElementById('btn-export-changes').disabled = !hasEdits;
+}
+
+// ============================================================
+// LOAD mission.sqm FROM TEXT
+// ============================================================
+function loadSqmText(text, filename) {
+  try {
+    // Detect which map
+    let mapKey = null;
+    if (filename) {
+      const fn = filename.toLowerCase();
+      if (fn.includes('chernarus')) mapKey = 'chernarus';
+      else if (fn.includes('takistan')) mapKey = 'takistan';
+    }
+    if (!mapKey) mapKey = detectMapFromSqm(text);
+    if (!mapKey) mapKey = 'chernarus'; // fallback
+
+    const result = sqmParse(text);
+
+    if (result.towns.length === 0) {
+      setIoStatus('No LocationLogicDepot towns found in this file. Is this a WASP mission.sqm?', 'err');
+      return;
+    }
+
+    // Store raw text + parse results
+    loadedSqm          = text;
+    loadedSqmMap       = mapKey;
+    loadedSqmIndex     = result.index;
+    loadedSqmWfLogicInitSpan = result.wfLogicInitSpan;
+
+    // Build originals lookup by name
+    const townsByName = new Map();
+    for (const t of result.towns) {
+      townsByName.set(t.name, { ...t, pos: t.pos.slice(), type: t.type.slice() });
+    }
+    loadedSqmOriginals = { townsByName };
+
+    // Replace townsData for this map with parsed data
+    // (keep the townsData structure intact for other maps)
+    if (!townsData) townsData = {};
+    if (!townsData[mapKey]) {
+      townsData[mapKey] = { towns: [], spawns: [], airports: [], presets: {}, map: mapKey, size: mapKey === 'chernarus' ? 15360 : 12800 };
+    }
+    townsData[mapKey].towns    = result.towns;
+    townsData[mapKey].spawns   = result.spawns;
+    townsData[mapKey].airports = result.airports;
+    townsData[mapKey].presets  = result.presets;
+    delete townsData[mapKey]._presetsEdited;
+
+    // Switch to the detected map
+    if (activeMap !== mapKey) {
+      const sel = document.getElementById('map-select');
+      sel.value = mapKey;
+      switchMap(mapKey);
+    } else {
+      renderAll();
+      renderPresetPanel();
+    }
+
+    const sub = document.getElementById('io-sub');
+    sub.textContent = `loaded: ${filename || 'mission.sqm'} (${mapKey})`;
+
+    setIoStatus(
+      `Loaded ${result.towns.length} towns from ${filename || 'mission.sqm'} (${mapKey}). ` +
+      `Make edits, then click Download.`,
+      'ok'
+    );
+    document.getElementById('btn-download-sqm').disabled = false;
+    updateIoButtons();
+
+  } catch (err) {
+    console.error('loadSqmText error:', err);
+    setIoStatus('Parse error: ' + err.message, 'err');
+  }
+}
+
+// ============================================================
+// FILE INPUT & DROP
+// ============================================================
+const ioFileInput = document.getElementById('io-file-input');
+const ioDropzone  = document.getElementById('io-dropzone');
+
+ioFileInput.addEventListener('change', (evt) => {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => loadSqmText(e.target.result, file.name);
+  reader.readAsText(file);
+  // Reset so the same file can be reloaded
+  ioFileInput.value = '';
+});
+
+ioDropzone.addEventListener('dragover', (evt) => {
+  evt.preventDefault();
+  ioDropzone.classList.add('drag-over');
+});
+ioDropzone.addEventListener('dragleave', () => ioDropzone.classList.remove('drag-over'));
+ioDropzone.addEventListener('drop', (evt) => {
+  evt.preventDefault();
+  ioDropzone.classList.remove('drag-over');
+  const file = evt.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => loadSqmText(e.target.result, file.name);
+  reader.readAsText(file);
+});
+
+// ============================================================
+// DOWNLOAD MODIFIED mission.sqm
+// ============================================================
+document.getElementById('btn-download-sqm').addEventListener('click', () => {
+  if (!loadedSqm) return;
+  const out = produceSqmOutput();
+  if (!out) {
+    setIoStatus('Nothing to download.', 'info');
+    return;
+  }
+  const blob = new Blob([out], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'mission.sqm';
+  a.click();
+  URL.revokeObjectURL(url);
+  setIoStatus('Downloaded. Non-edited content is byte-identical to the original.', 'ok');
+});
+
+// ============================================================
+// CHANGE-LIST EXPORT (copy to clipboard + show textarea)
+// ============================================================
+document.getElementById('btn-export-changes').addEventListener('click', () => {
+  const cl = loadedSqm ? buildSqmChangeListFromLoaded() : buildChangeList();
+  if (!cl.trim()) {
+    setIoStatus('No edits to export.', 'info');
+    return;
+  }
+  // Show in textarea
+  const label  = document.getElementById('io-change-label');
+  const output = document.getElementById('io-change-output');
+  label.style.display  = 'block';
+  output.style.display = 'block';
+  output.value = cl;
+
+  // Copy to clipboard
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(cl).then(() => {
+      setIoStatus('Change-list copied to clipboard.', 'ok');
+    }).catch(() => {
+      setIoStatus('Change-list shown below (clipboard denied).', 'info');
+    });
+  } else {
+    setIoStatus('Change-list shown below.', 'info');
+  }
+});
+
+/** Change-list when a sqm IS loaded — show just the diff blocks */
+function buildSqmChangeListFromLoaded() {
+  const data = getWaspData();
+  if (!data) return '';
+  const lines = [];
+
+  for (const t of data.towns) {
+    if (!t._edited) continue;
+    const orig = loadedSqmOriginals && loadedSqmOriginals.townsByName.get(t.name);
+    const span = loadedSqmIndex && loadedSqmIndex.get(t.name);
+    lines.push(`// === ${t.name} ===`);
+    const posChanged  = !orig || Math.abs(t.pos[0] - orig.pos[0]) > 0.0001 || Math.abs(t.pos[1] - orig.pos[1]) > 0.0001;
+    const attrChanged = !orig || t.startSV !== orig.startSV || t.maxSV !== orig.maxSV ||
+                        t.value !== orig.value ||
+                        JSON.stringify(t.type.slice().sort()) !== JSON.stringify(orig.type.slice().sort());
+    if (posChanged)  lines.push(buildPosStr(t, span || null));
+    if (attrChanged) lines.push(buildInitStr(t));
+    lines.push('');
+  }
+
+  if (data._presetsEdited && data.presets) {
+    lines.push('// === Preset arrays (WF_Logic init) ===');
+    for (const name of PRESET_NAMES) {
+      if (!data.presets[name]) continue;
+      const arr = data.presets[name].map(n => `""${n}""`).join(',');
+      lines.push(`this setVariable [""Towns_Removed${name}"",[${arr}]];`);
+    }
+  }
+
+  return lines.join('\n');
+}
 
 init();
 </script>
