@@ -402,6 +402,17 @@
   /* Capture estimate display in inspector */
   .capture-est{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--orange)}
 
+  /* ---- Supply route overlay ---- */
+  .route-edge-same{fill:none;stroke-width:1.2;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.35}
+  .route-edge-contested{fill:none;stroke:#f5d742;stroke-width:2.2;stroke-dasharray:300 120;
+    vector-effect:non-scaling-stroke;pointer-events:none;opacity:.75}
+  .route-edge-neutral{fill:none;stroke:var(--steel2);stroke-width:1.2;
+    vector-effect:non-scaling-stroke;pointer-events:none;opacity:.45}
+  /* Edit-routes mode: clickable town hitbox overlay */
+  .route-hit{fill:transparent;cursor:crosshair;pointer-events:all}
+  .route-edit-pending{fill:rgba(217,118,60,.18);stroke:var(--orange);stroke-width:2;
+    vector-effect:non-scaling-stroke;pointer-events:none}
+
   /* ---- Generate Mission panel ---- */
   .gen-panel{border-top:1px solid var(--line);padding:12px 14px;flex:0 0 auto}
   .gen-panel .gen-title{font-family:Oswald,sans-serif;font-size:13px;letter-spacing:.5px;color:var(--bone);margin-bottom:10px}
@@ -554,6 +565,18 @@
         </svg>
         Airfield
       </div>
+      <div class="legend-item">
+        <svg width="22" height="6" viewBox="0 0 22 6" style="flex:0 0 22px">
+          <line x1="0" y1="3" x2="22" y2="3" stroke="#2A2F36" stroke-width="2"/>
+        </svg>
+        Supply route (same side)
+      </div>
+      <div class="legend-item">
+        <svg width="22" height="6" viewBox="0 0 22 6" style="flex:0 0 22px">
+          <line x1="0" y1="3" x2="22" y2="3" stroke="#f5d742" stroke-width="2" stroke-dasharray="5 3"/>
+        </svg>
+        Contested route (WEST↔EAST)
+      </div>
 
       <div class="divider"></div>
 
@@ -651,6 +674,35 @@
           <input type="checkbox" id="show-frontline"> Frontline + dist-to-front
         </div>
 
+        <!-- Supply routes overlay -->
+        <div class="toggle-row" style="margin-top:8px">
+          <input type="checkbox" id="show-supply-routes"> Supply routes
+        </div>
+        <div id="supply-routes-controls" style="display:none;padding-left:4px;margin-top:4px">
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="paint-mode-btn" id="btn-edit-routes" style="flex:1;min-width:60px;margin-top:0;padding:5px 8px;font-size:11px">
+              <div class="dot" style="width:7px;height:7px;border-radius:50%;background:var(--orange);flex:0 0 auto;opacity:.7"></div>
+              Edit routes
+            </button>
+            <button class="paint-mode-btn" id="btn-auto-routes" style="flex:1;min-width:60px;margin-top:0;padding:5px 8px;font-size:11px">
+              ↺ Auto
+            </button>
+          </div>
+          <div style="font-size:10px;color:#5a6470;margin-top:5px;line-height:1.5;font-family:'JetBrains Mono',monospace" id="supply-routes-hint">
+            Click two towns to toggle an edge.
+          </div>
+          <div style="display:flex;gap:5px;margin-top:5px" id="supply-routes-stats">
+            <div class="stat-cell" style="flex:1;padding:4px 7px">
+              <div class="val" id="stat-route-edges" style="font-size:14px">–</div>
+              <div class="lbl">Edges</div>
+            </div>
+            <div class="stat-cell" style="flex:1;padding:4px 7px">
+              <div class="val" id="stat-route-contested" style="font-size:14px;color:#f5d742">–</div>
+              <div class="lbl">Contested</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Capture-time overlay -->
         <div class="toggle-row" style="margin-top:4px">
           <input type="checkbox" id="show-capture-est"> Capture-time estimate
@@ -744,6 +796,8 @@
         <g id="g-airports"></g>
         <!-- Spawns -->
         <g id="g-spawns"></g>
+        <!-- Supply routes overlay (below towns, above dist rings) -->
+        <g id="g-supply-routes"></g>
         <!-- Strategy overlay: distance-to-front shading rings (below towns) -->
         <g id="g-dist-rings"></g>
         <!-- Strategy overlay: frontline edges -->
@@ -3874,6 +3928,9 @@ function wireStrategyControls() {
     renderFrontlineOverlay();
   });
 
+  // Supply routes (wired via dedicated function called after DOM ready)
+  wireSupplyRouteControls();
+
   // Capture-time toggle
   document.getElementById('show-capture-est').addEventListener('change', () => {
     renderCaptureOverlay();
@@ -3951,6 +4008,336 @@ refreshTownOnMap = function(t, idx) {
   _origRefreshTownOnMap(t, idx);
   if (document.getElementById('show-income').checked) renderIncomeOverlay();
   if (document.getElementById('show-frontline').checked) renderFrontlineOverlay();
+  if (document.getElementById('show-supply-routes').checked) renderSupplyRoutes();
+};
+
+// ============================================================
+// SUPPLY ROUTE GRAPH OVERLAY
+// ============================================================
+// Per-map adjacency is stored in townsData[mapKey]._supplyEdges
+// as an array of [nameA, nameB] pairs (sorted, deduped undirected edges).
+// K = 3 nearest neighbours + distance threshold to avoid bridging far islands.
+const ROUTE_K = 3;
+const ROUTE_MAX_DIST = 5000; // world metres — don't connect towns further than this
+
+let routeEditMode = false;
+let routeEditPending = null; // name of first-click town (awaiting second click)
+
+// ---- Get / init edge store for current map ----
+function getRouteEdges() {
+  const data = getWaspData();
+  if (!data) return [];
+  if (!data._supplyEdges) data._supplyEdges = [];
+  return data._supplyEdges;
+}
+
+function setRouteEdges(edges) {
+  const data = getWaspData();
+  if (!data) return;
+  data._supplyEdges = edges;
+}
+
+// ---- Persist edges to localStorage (per map) ----
+const ROUTE_LS_KEY = 'sp-supply-routes-v1';
+
+function saveRouteEdges() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ROUTE_LS_KEY) || '{}');
+    saved[activeMap] = getRouteEdges();
+    localStorage.setItem(ROUTE_LS_KEY, JSON.stringify(saved));
+  } catch(e) {}
+}
+
+function loadRouteEdges() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ROUTE_LS_KEY) || '{}');
+    const edges = saved[activeMap];
+    if (Array.isArray(edges)) {
+      const data = getWaspData();
+      if (data) data._supplyEdges = edges;
+    }
+  } catch(e) {}
+}
+
+// ---- Auto-compute K-nearest adjacency ----
+function computeAutoRoutes() {
+  const data = getWaspData();
+  if (!data || data.towns.length === 0) { setRouteEdges([]); return; }
+
+  const towns = data.towns;
+  const edgeSet = new Set(); // dedupe key: "A|B" sorted
+  const edges = [];
+
+  towns.forEach((t, i) => {
+    // Compute distances to all other towns
+    const dists = towns
+      .map((other, j) => {
+        if (j === i) return null;
+        const dx = t.pos[0] - other.pos[0];
+        const dy = t.pos[1] - other.pos[1];
+        return { j, d: Math.sqrt(dx * dx + dy * dy) };
+      })
+      .filter(x => x !== null && x.d <= ROUTE_MAX_DIST)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, ROUTE_K);
+
+    dists.forEach(({ j }) => {
+      const key = [t.name, towns[j].name].sort().join('|');
+      if (!edgeSet.has(key)) {
+        edgeSet.add(key);
+        edges.push([t.name, towns[j].name]);
+      }
+    });
+  });
+
+  setRouteEdges(edges);
+  saveRouteEdges();
+}
+
+// ---- Toggle a single edge (for edit mode) ----
+function toggleRouteEdge(nameA, nameB) {
+  const key = [nameA, nameB].sort().join('|');
+  const edges = getRouteEdges();
+  const idx = edges.findIndex(([a, b]) => [a, b].sort().join('|') === key);
+  if (idx === -1) {
+    edges.push([nameA, nameB]);
+  } else {
+    edges.splice(idx, 1);
+  }
+  setRouteEdges(edges);
+  saveRouteEdges();
+}
+
+// ---- Determine if edge is contested (crosses WEST↔EAST boundary) ----
+function isContestedEdge(nameA, nameB) {
+  const data = getWaspData();
+  if (!data) return false;
+  const tA = data.towns.find(t => t.name === nameA);
+  const tB = data.towns.find(t => t.name === nameB);
+  if (!tA || !tB) return false;
+  const sA = tA.side || 'neutral';
+  const sB = tB.side || 'neutral';
+  return (sA === 'west' && sB === 'east') || (sA === 'east' && sB === 'west');
+}
+
+// ---- Same-side edge coloring ----
+function routeEdgeColor(nameA, nameB) {
+  const data = getWaspData();
+  if (!data) return 'var(--steel2)';
+  const tA = data.towns.find(t => t.name === nameA);
+  const tB = data.towns.find(t => t.name === nameB);
+  if (!tA || !tB) return 'var(--steel2)';
+  const ownerOn = document.getElementById('show-ownership') &&
+                  document.getElementById('show-ownership').checked;
+  if (!ownerOn) return 'var(--steel2)';
+  const sA = tA.side || 'neutral';
+  const sB = tB.side || 'neutral';
+  if (sA === sB && sA !== 'neutral') return getSideColor(sA);
+  return 'var(--steel2)';
+}
+
+// ---- Update stats display ----
+function updateRouteStats() {
+  const edges = getRouteEdges();
+  const contested = edges.filter(([a, b]) => isContestedEdge(a, b)).length;
+  const eEl = document.getElementById('stat-route-edges');
+  const cEl = document.getElementById('stat-route-contested');
+  if (eEl) eEl.textContent = edges.length;
+  if (cEl) cEl.textContent = contested;
+}
+
+// ---- Main render ----
+function renderSupplyRoutes() {
+  const g = document.getElementById('g-supply-routes');
+  if (!g) return;
+  g.innerHTML = '';
+
+  const on = document.getElementById('show-supply-routes') &&
+             document.getElementById('show-supply-routes').checked;
+
+  // Show/hide controls
+  const ctrl = document.getElementById('supply-routes-controls');
+  if (ctrl) ctrl.style.display = on ? '' : 'none';
+
+  if (!on) return;
+
+  const data = getWaspData();
+  if (!data) return;
+
+  // Auto-init edges on first display if none computed yet
+  if (!data._supplyEdges || data._supplyEdges.length === 0) {
+    loadRouteEdges();
+    if (!data._supplyEdges || data._supplyEdges.length === 0) {
+      computeAutoRoutes();
+    }
+  }
+
+  const edges = getRouteEdges();
+  const townMap = new Map(data.towns.map(t => [t.name, t]));
+  const ownerOn = document.getElementById('show-ownership') &&
+                  document.getElementById('show-ownership').checked;
+
+  edges.forEach(([nameA, nameB]) => {
+    const tA = townMap.get(nameA);
+    const tB = townMap.get(nameB);
+    if (!tA || !tB) return;
+
+    const contested = ownerOn && isContestedEdge(nameA, nameB);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+
+    const x1 = tA.pos[0], y1 = SIZE - tA.pos[1];
+    const x2 = tB.pos[0], y2 = SIZE - tB.pos[1];
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+
+    if (contested) {
+      line.setAttribute('class', 'route-edge-contested');
+    } else {
+      line.setAttribute('class', 'route-edge-neutral');
+      if (ownerOn) {
+        const col = routeEdgeColor(nameA, nameB);
+        line.setAttribute('stroke', col);
+        line.setAttribute('class', 'route-edge-same');
+      }
+    }
+    g.appendChild(line);
+  });
+
+  // Route edit mode: draw invisible hit circles over each town
+  if (routeEditMode) {
+    data.towns.forEach((t, ti) => {
+      const cx = t.pos[0];
+      const cy = SIZE - t.pos[1];
+      const r = townRadius(t.value) * 1.4;
+
+      // Pending highlight
+      if (routeEditPending === t.name) {
+        const hi = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        hi.setAttribute('class', 'route-edit-pending');
+        hi.setAttribute('cx', cx); hi.setAttribute('cy', cy); hi.setAttribute('r', r);
+        g.appendChild(hi);
+      }
+
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      hit.setAttribute('class', 'route-hit');
+      hit.setAttribute('cx', cx); hit.setAttribute('cy', cy); hit.setAttribute('r', r);
+      hit.setAttribute('data-route-town', t.name);
+      hit.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        handleRouteEditClick(t.name);
+      });
+      g.appendChild(hit);
+    });
+  }
+
+  updateRouteStats();
+}
+
+// ---- Edit mode click handler ----
+function handleRouteEditClick(name) {
+  if (!routeEditPending) {
+    // First click: set pending
+    routeEditPending = name;
+    renderSupplyRoutes();
+  } else if (routeEditPending === name) {
+    // Clicked same town: cancel
+    routeEditPending = null;
+    renderSupplyRoutes();
+  } else {
+    // Second click: toggle edge
+    toggleRouteEdge(routeEditPending, name);
+    routeEditPending = null;
+    renderSupplyRoutes();
+  }
+}
+
+// ---- Set edit mode ----
+function setRouteEditMode(on) {
+  routeEditMode = on;
+  routeEditPending = null;
+  const btn = document.getElementById('btn-edit-routes');
+  if (btn) btn.classList.toggle('active', on);
+  const hint = document.getElementById('supply-routes-hint');
+  if (hint) hint.textContent = on
+    ? 'Click first town, then second town to toggle edge. Click same town to cancel.'
+    : 'Toggle "Edit routes" to add or remove an edge between two towns.';
+  // Switch SVG cursor
+  if (on) {
+    svg.style.cursor = 'crosshair';
+  } else {
+    // Restore cursor to previous mode
+    if (typeof addTownMode !== 'undefined' && addTownMode) svg.style.cursor = 'crosshair';
+    else if (typeof paintMode !== 'undefined' && paintMode) svg.style.cursor = 'crosshair';
+    else svg.style.cursor = '';
+  }
+  renderSupplyRoutes();
+}
+
+// ---- Wire controls (called from wireStrategyControls) ----
+function wireSupplyRouteControls() {
+  const toggleEl = document.getElementById('show-supply-routes');
+  if (toggleEl) {
+    toggleEl.addEventListener('change', () => {
+      if (!routeEditMode) {
+        renderSupplyRoutes();
+      } else {
+        setRouteEditMode(false);
+        renderSupplyRoutes();
+      }
+    });
+  }
+
+  const editBtn = document.getElementById('btn-edit-routes');
+  if (editBtn) {
+    editBtn.addEventListener('click', () => {
+      setRouteEditMode(!routeEditMode);
+    });
+  }
+
+  const autoBtn = document.getElementById('btn-auto-routes');
+  if (autoBtn) {
+    autoBtn.addEventListener('click', () => {
+      if (routeEditMode) setRouteEditMode(false);
+      computeAutoRoutes();
+      renderSupplyRoutes();
+    });
+  }
+}
+
+// Patch renderAll to include supply routes
+const _origRenderAll2 = renderAll;
+renderAll = function() {
+  _origRenderAll2();
+  renderSupplyRoutes();
+};
+
+// Patch paintTownSide so contested routes update when ownership changes
+const _origPaintTownSide = paintTownSide;
+paintTownSide = function(t, idx) {
+  _origPaintTownSide(t, idx);
+  if (document.getElementById('show-supply-routes').checked) {
+    renderSupplyRoutes();
+  }
+};
+
+// Patch switchMap to recompute/load routes for the new map
+const _origSwitchMap = switchMap;
+switchMap = function(mapKey) {
+  // Exit route edit mode on map switch
+  if (routeEditMode) setRouteEditMode(false);
+  routeEditPending = null;
+  _origSwitchMap(mapKey);
+  // After switching, load persisted or auto-compute routes for new map
+  if (document.getElementById('show-supply-routes').checked) {
+    const data = getWaspData();
+    if (data && (!data._supplyEdges || data._supplyEdges.length === 0)) {
+      loadRouteEdges();
+      if (!data._supplyEdges || data._supplyEdges.length === 0) {
+        computeAutoRoutes();
+      }
+    }
+    renderSupplyRoutes();
+  }
 };
 
 // ============================================================
