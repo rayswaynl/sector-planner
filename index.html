@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sector Planner — WASP Campaign Map</title>
+<meta name="description" content="Strategic sector and town planner for WASP Warfare — view and edit town positions, supply values, and presets on the Chernarus / Takistan map.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gunmetal:#14171B; --steel:#2A2F36; --steel2:#343b44;
+    --olive:#5C6536; --bone:#E7E3D6; --orange:#D9763C; --orange-deep:#B85F2A;
+    --chalk:#F2EFE8; --line:#39414b; --danger:#c0392b;
+    --west:#5D82A3; --east:#A8503F; --guer:#5C6536; --neutral:#7A8490;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;background:var(--gunmetal);color:var(--bone);overflow:hidden}
+  h1,h2,h3{font-family:Oswald,Inter,sans-serif;font-weight:600;letter-spacing:.5px}
+
+  /* ---- Brand bar ---- */
+  .brandbar{height:54px;display:flex;align-items:center;gap:14px;padding:0 16px;
+    background:linear-gradient(90deg,#101317 0%,#171b20 100%);border-bottom:1px solid var(--line);position:relative;z-index:5}
+  .brandbar .mark{width:34px;height:34px;flex:0 0 auto}
+  .brandbar .word{display:flex;flex-direction:column;line-height:1}
+  .brandbar .word .t1{font-family:Oswald,sans-serif;font-weight:600;font-size:19px;letter-spacing:2px;color:var(--bone)}
+  .brandbar .word .t2{font-family:Oswald,sans-serif;font-weight:400;font-size:10px;letter-spacing:6px;color:var(--orange);margin-top:2px}
+  .brandbar .tool{margin-left:8px;padding-left:14px;border-left:1px solid var(--line);font-size:12px;color:#9aa3ad}
+  .brandbar .tool b{color:var(--bone);font-weight:600}
+  .brandbar .spacer{flex:1}
+  .brandbar .chip{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b939c;border:1px solid var(--line);
+    border-radius:10px;padding:3px 9px;background:#0d1014}
+  .brandbar .chip b{color:var(--olive)}
+
+  /* ---- App layout ---- */
+  .app{display:grid;grid-template-columns:260px 1fr 300px;height:calc(100% - 54px)}
+  .panel{background:var(--steel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .panel.right{border-right:none;border-left:1px solid var(--line)}
+  .panel header{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--gunmetal);flex:0 0 auto}
+  .panel header h2{font-size:14px;margin:0}
+  .panel header .sub{font-size:11px;color:#9aa3ad;margin-top:3px;font-family:'JetBrains Mono',monospace}
+  .scroll{overflow:auto;padding:12px 14px;flex:1;min-height:0}
+
+  /* ---- Controls panel ---- */
+  label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#9aa3ad;margin:10px 0 4px}
+  label:first-child{margin-top:0}
+  .segmented{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .segmented button{flex:1;border:none;border-radius:0;background:var(--gunmetal);padding:9px 6px;font-size:12px;color:#9aa3ad;cursor:pointer;font-family:inherit}
+  .segmented button+button{border-left:1px solid var(--line)}
+  .segmented button:hover{color:var(--bone)}
+  .segmented button.on{background:var(--orange);color:#1a1208;font-weight:600}
+
+  .toggle-row{display:flex;align-items:center;gap:7px;margin:6px 0;font-size:12px;color:var(--bone)}
+  .toggle-row input[type=checkbox]{accent-color:var(--orange);width:14px;height:14px;cursor:pointer}
+
+  .divider{height:1px;background:var(--line);margin:14px 0}
+
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:#9aa3ad;margin:5px 0;font-family:'JetBrains Mono',monospace}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+  .legend-ring{width:10px;height:10px;border-radius:50%;border:1.5px solid;flex:0 0 auto;background:transparent}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .stat-cell{background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;padding:7px 9px}
+  .stat-cell .val{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--orange);font-weight:500}
+  .stat-cell .lbl{font-size:10px;color:#8b939c;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+  /* ---- Map stage ---- */
+  .stage{position:relative;background:#0b0e12;min-height:0;overflow:hidden;cursor:crosshair}
+  .stage svg{display:block;width:100%;height:100%}
+  #map-svg{width:100%;height:100%;cursor:grab}
+  #map-svg.panning{cursor:grabbing}
+
+  /* ---- SVG element styles ---- */
+  .grid-line{stroke:var(--steel2);stroke-width:1;vector-effect:non-scaling-stroke}
+  .grid-line-major{stroke:#2f3740;stroke-width:1;vector-effect:non-scaling-stroke}
+  .grid-label{fill:#4a5560;font-family:'JetBrains Mono',monospace;font-size:11px}
+  .map-border{fill:none;stroke:var(--line);stroke-width:2;vector-effect:non-scaling-stroke}
+
+  .capture-ring{fill:none;stroke:rgba(217,118,60,0.18);stroke-width:1.5;vector-effect:non-scaling-stroke}
+  .town-marker{cursor:pointer;transition:opacity .15s}
+  .town-marker circle.body{fill:var(--neutral);stroke:var(--bone);stroke-width:1;vector-effect:non-scaling-stroke;opacity:.85}
+  .town-marker:hover circle.body{fill:var(--orange);opacity:1}
+  .town-marker.sel circle.body{fill:var(--orange);stroke:var(--chalk);stroke-width:2}
+  .town-label{fill:var(--bone);font-family:'JetBrains Mono',monospace;font-size:10px;text-anchor:middle;pointer-events:none;opacity:.9}
+
+  .spawn-marker{pointer-events:none}
+  .airport-marker{pointer-events:none}
+
+  /* ---- Zoom/pan overlay controls ---- */
+  .map-overlay{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;z-index:3}
+  .map-overlay button{
+    width:30px;height:30px;border:1px solid var(--line);border-radius:5px;
+    background:rgba(20,23,27,.88);color:var(--bone);font-size:16px;line-height:1;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    font-family:inherit;backdrop-filter:blur(4px)
+  }
+  .map-overlay button:hover{border-color:var(--orange)}
+
+  .coords-badge{position:absolute;bottom:10px;left:10px;background:rgba(20,23,27,.82);
+    border:1px solid var(--line);border-radius:5px;padding:4px 9px;font-family:'JetBrains Mono',monospace;
+    font-size:10px;color:#8b939c;z-index:3;backdrop-filter:blur(3px)}
+
+  .scale-badge{position:absolute;bottom:10px;right:10px;background:rgba(20,23,27,.82);
+    border:1px solid var(--line);border-radius:5px;padding:4px 9px;font-family:'JetBrains Mono',monospace;
+    font-size:10px;color:#8b939c;z-index:3;backdrop-filter:blur(3px)}
+
+  /* ---- Inspector (right panel) ---- */
+  .inspector-empty{font-size:12px;color:#5a6470;padding:8px 0;line-height:1.6}
+  .inspector-name{font-family:Oswald,sans-serif;font-size:18px;letter-spacing:.5px;color:var(--bone);margin-bottom:6px}
+  .inspector-pos{font-family:'JetBrains Mono',monospace;font-size:11px;color:#8b939c;margin-bottom:12px}
+  .inspector-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px}
+  .inspector-row:last-child{border-bottom:none}
+  .inspector-row .key{color:#9aa3ad;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  .inspector-row .val{font-family:'JetBrains Mono',monospace;color:var(--bone)}
+  .type-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+  .type-chip{font-size:10px;border:1px solid #46505b;border-radius:10px;padding:2px 8px;color:#c8d0d8;background:var(--gunmetal)}
+
+  /* ---- scrollbar ---- */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:var(--steel2);border-radius:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+
+<!-- ====== Brand bar ====== -->
+<div class="brandbar">
+  <svg class="mark" viewBox="0 0 96 96" aria-label="Miksuu's Warfare">
+    <g fill="none" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter">
+      <polyline points="20,54 48,30 76,54" stroke="#D9763C"/>
+      <polyline points="20,66 48,42 76,66" stroke="#F2EFE8"/>
+      <polyline points="20,78 48,54 76,78" stroke="#5C6536"/>
+    </g>
+  </svg>
+  <div class="word">
+    <span class="t1">SECTOR PLANNER</span>
+    <span class="t2">WASP CAMPAIGN MAP</span>
+  </div>
+  <div class="tool"><b>Sector &amp; Town Planner</b> · Chernarus / Takistan</div>
+  <div class="spacer"></div>
+  <div class="chip">coords: <b>world-space metres</b> · Y-north up</div>
+</div>
+
+<div class="app">
+
+  <!-- ====== LEFT: Controls ====== -->
+  <div class="panel">
+    <header>
+      <h2>Controls</h2>
+      <div class="sub">map · filters · legend</div>
+    </header>
+    <div class="scroll">
+
+      <label>Map</label>
+      <div class="segmented" id="map-switcher">
+        <button class="on" data-map="chernarus">Chernarus</button>
+        <button data-map="takistan">Takistan</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <label>Show layers</label>
+      <div class="toggle-row"><input type="checkbox" id="show-towns" checked> Town markers</div>
+      <div class="toggle-row"><input type="checkbox" id="show-rings" checked> Capture rings (600 m)</div>
+      <div class="toggle-row"><input type="checkbox" id="show-spawns" checked> Spawn points</div>
+      <div class="toggle-row"><input type="checkbox" id="show-airports" checked> Airfields</div>
+      <div class="toggle-row"><input type="checkbox" id="show-grid" checked> Coordinate grid</div>
+      <div class="toggle-row"><input type="checkbox" id="show-labels" checked> Town labels</div>
+
+      <div class="divider"></div>
+
+      <label>Map statistics</label>
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-cell"><div class="val" id="stat-towns">–</div><div class="lbl">Towns</div></div>
+        <div class="stat-cell"><div class="val" id="stat-spawns">–</div><div class="lbl">Spawns</div></div>
+        <div class="stat-cell"><div class="val" id="stat-airports">–</div><div class="lbl">Airfields</div></div>
+        <div class="stat-cell"><div class="val" id="stat-size">–</div><div class="lbl">Map km</div></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <label>Legend</label>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--neutral);border:1px solid var(--bone)"></div>Town (neutral)</div>
+      <div class="legend-item"><div class="legend-ring" style="border-color:rgba(217,118,60,.5)"></div>Capture ring (600 m)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--west)"></div>Spawn — WEST (blue)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--east)"></div>Spawn — EAST (red)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--guer)"></div>Spawn — GUER (olive)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#888"></div>Spawn — neutral</div>
+      <div class="legend-item">
+        <svg width="10" height="10" viewBox="0 0 10 10" style="flex:0 0 auto">
+          <path d="M5,1 L9,9 L1,9 Z" fill="none" stroke="var(--orange)" stroke-width="1.5"/>
+        </svg>
+        Airfield
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="font-size:11px;color:#5a6470;line-height:1.6">
+        Scroll to zoom · drag map to pan<br>
+        Click a town to inspect
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ====== CENTRE: Map stage ====== -->
+  <div class="stage" id="stage">
+    <svg id="map-svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="map-clip">
+          <rect id="map-clip-rect" x="0" y="0" width="0" height="0"/>
+        </clipPath>
+      </defs>
+      <!-- Pan/zoom group — everything lives inside this -->
+      <g id="pz-root">
+        <!-- Grid group -->
+        <g id="g-grid"></g>
+        <!-- Capture rings -->
+        <g id="g-rings"></g>
+        <!-- Airfields -->
+        <g id="g-airports"></g>
+        <!-- Spawns -->
+        <g id="g-spawns"></g>
+        <!-- Town markers -->
+        <g id="g-towns"></g>
+        <!-- Town labels -->
+        <g id="g-labels"></g>
+        <!-- Map border (on top) -->
+        <rect id="map-border-rect" class="map-border"/>
+      </g>
+    </svg>
+
+    <div class="map-overlay">
+      <button id="btn-zoom-in" title="Zoom in">+</button>
+      <button id="btn-zoom-out" title="Zoom out">−</button>
+      <button id="btn-zoom-fit" title="Fit map" style="font-size:11px">FIT</button>
+    </div>
+    <div class="coords-badge" id="coords-badge">x: — y: —</div>
+    <div class="scale-badge" id="scale-badge">—</div>
+  </div>
+
+  <!-- ====== RIGHT: Inspector ====== -->
+  <div class="panel right">
+    <header>
+      <h2>Inspector</h2>
+      <div class="sub">click a town to inspect</div>
+    </header>
+    <div class="scroll" id="inspector-body">
+      <div class="inspector-empty">No town selected.<br>Click any town marker on the map to inspect its properties.</div>
+    </div>
+  </div>
+
+</div><!-- /.app -->
+
+<script>
+// ============================================================
+// DATA LOADING
+// ============================================================
+let mapData = null;        // full seed-towns.json
+let activeMap = 'chernarus';
+let selectedTown = null;
+
+// ============================================================
+// COORDINATE MAPPING
+// World origin = bottom-left corner of the map (SW corner).
+// World X grows east, World Y grows north.
+// SVG viewBox = "0 0 SIZE SIZE" with Y-flip via transform
+// on the pz-root group: translate(0, SIZE) scale(1,-1)
+// This means world (0,0) → SVG (0,0) which is the SW corner (correct).
+// Text counter-flip: scale(1,-1) on each label element.
+// ============================================================
+
+// ============================================================
+// PAN / ZOOM STATE
+// We use a camera: { x, y, scale } where
+//   svgX = worldX * scale + x
+//   svgY = worldY * scale + y   (after Y-flip handled in world→screen)
+// Actually we maintain a transform on #pz-root via a matrix:
+//   transform="translate(tx ty) scale(s)"
+// World→screen: sx = worldX * s + tx; sy = (SIZE - worldY) * s + ty
+// (Y is flipped: worldY=0 at bottom → svgY=SIZE at bottom → so we use SIZE-worldY)
+// ============================================================
+
+const svg = document.getElementById('map-svg');
+const pzRoot = document.getElementById('pz-root');
+
+let cam = { tx: 0, ty: 0, s: 1 };
+let SIZE = 15360;
+
+function applyTransform() {
+  pzRoot.setAttribute('transform', `translate(${cam.tx},${cam.ty}) scale(${cam.s})`);
+}
+
+function worldToSVG(wx, wy) {
+  // SVG coordinate space is SIZE x SIZE (no viewBox transform).
+  // Y is flipped: wy=0 → bottom of world → top of svg would be wrong.
+  // We place world origin at top-left by: svgY = SIZE - wy (so wy=SIZE→svgY=0 = top, wy=0→svgY=SIZE = bottom)
+  // then the pz camera scales+translates that.
+  return {
+    x: cam.tx + wx * cam.s,
+    y: cam.ty + (SIZE - wy) * cam.s
+  };
+}
+
+function svgToWorld(sx, sy) {
+  const wx = (sx - cam.tx) / cam.s;
+  const wy = SIZE - (sy - cam.ty) / cam.s;
+  return { x: wx, y: wy };
+}
+
+// Get SVG element coordinates from a mouse event
+function svgCoords(evt) {
+  const rect = svg.getBoundingClientRect();
+  return {
+    x: evt.clientX - rect.left,
+    y: evt.clientY - rect.top
+  };
+}
+
+// ============================================================
+// FIT MAP TO STAGE
+// ============================================================
+function fitMap() {
+  const rect = svg.getBoundingClientRect();
+  const W = rect.width;
+  const H = rect.height;
+  if (!W || !H) return;
+  const s = Math.min(W, H) / SIZE * 0.92;
+  const marginX = (W - SIZE * s) / 2;
+  const marginY = (H - SIZE * s) / 2;
+  cam = { tx: marginX, ty: marginY, s };
+  applyTransform();
+  updateScaleBadge();
+}
+
+function updateScaleBadge() {
+  const badge = document.getElementById('scale-badge');
+  // 1 world metre = cam.s SVG px. Find round km markers.
+  const mPerPx = 1 / cam.s;
+  const barWorldM = 1000; // 1 km bar
+  const barPx = barWorldM * cam.s;
+  badge.textContent = `1 km = ${barPx.toFixed(0)} px`;
+}
+
+// ============================================================
+// GRID RENDERING (1 km = 1000 m spacing)
+// ============================================================
+function renderGrid() {
+  const g = document.getElementById('g-grid');
+  g.innerHTML = '';
+  const step = 1000; // 1 km
+  const majorEvery = 5; // every 5 km
+  const count = Math.ceil(SIZE / step);
+
+  for (let i = 0; i <= count; i++) {
+    const v = i * step;
+    const isMajor = (i % majorEvery === 0);
+    const cls = isMajor ? 'grid-line-major' : 'grid-line';
+
+    // Vertical line (constant X)
+    const vl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    vl.setAttribute('class', cls);
+    vl.setAttribute('x1', v); vl.setAttribute('y1', 0);
+    vl.setAttribute('x2', v); vl.setAttribute('y2', SIZE);
+    g.appendChild(vl);
+
+    // Horizontal line (constant Y, but in our flipped space)
+    // worldY = v → svgY_unscaled = SIZE - v
+    const hl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    hl.setAttribute('class', cls);
+    hl.setAttribute('x1', 0); hl.setAttribute('y1', SIZE - v);
+    hl.setAttribute('x2', SIZE); hl.setAttribute('y2', SIZE - v);
+    g.appendChild(hl);
+
+    // Labels at major lines (only bottom edge for X, left edge for Y)
+    if (isMajor && v > 0) {
+      // X-axis label (at bottom = worldY=0 → svgY=SIZE)
+      // Counter-flip text: place at svgY=SIZE (worldY=0), with counter-scale
+      const tx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      tx.setAttribute('class', 'grid-label');
+      tx.setAttribute('x', v);
+      tx.setAttribute('y', SIZE); // worldY=0, svgY=SIZE, but text counter-flip puts it right
+      // We need to counter-rotate the text since pz-root has no flip.
+      // The grid is placed in pz-root's local coord space (already Y-flipped via SIZE-v).
+      // Text at svgY=SIZE would be at world south edge — label it with world X value.
+      // Place slightly above the bottom.
+      tx.setAttribute('y', SIZE - 6);
+      tx.setAttribute('text-anchor', 'middle');
+      tx.textContent = `${v}`;
+      g.appendChild(tx);
+
+      // Y-axis label (at left edge = worldX=0)
+      if (v < SIZE) {
+        const ty = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        ty.setAttribute('class', 'grid-label');
+        ty.setAttribute('x', 6);
+        ty.setAttribute('y', SIZE - v - 4);
+        ty.setAttribute('text-anchor', 'start');
+        ty.textContent = `${v}`;
+        g.appendChild(ty);
+      }
+    }
+  }
+
+  // Map border
+  const border = document.getElementById('map-border-rect');
+  border.setAttribute('x', 0);
+  border.setAttribute('y', 0);
+  border.setAttribute('width', SIZE);
+  border.setAttribute('height', SIZE);
+}
+
+// ============================================================
+// MARKER SIZE from value (sqrt scaling, 4..14 world metres * display factor)
+// We use world-space radii so they scale with zoom correctly.
+// Base: sqrt(value) mapped roughly: value 100 → r~5, value 1000 → r~14, value 300→r~8
+// ============================================================
+function townRadius(value) {
+  const minV = 100, maxV = 1000;
+  const minR = 120, maxR = 460; // world metres
+  const t = (Math.sqrt(value) - Math.sqrt(minV)) / (Math.sqrt(maxV) - Math.sqrt(minV));
+  return minR + t * (maxR - minR);
+}
+
+// ============================================================
+// SPAWN ICON (diamond)
+// ============================================================
+function spawnColor(side) {
+  if (!side) return '#7A8490';
+  if (side === 'west') return '#5D82A3';
+  if (side === 'east') return '#A8503F';
+  if (side === 'resistance' || side === 'guer') return '#5C6536';
+  return '#7A8490';
+}
+
+function makeSpawnIcon(wx, wy, side) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'spawn-marker');
+  const svgY = SIZE - wy;
+  const r = 140; // world metres half-size
+  const col = spawnColor(side);
+  // Diamond shape: 4 points
+  const pts = `${wx},${svgY - r} ${wx + r},${svgY} ${wx},${svgY + r} ${wx - r},${svgY}`;
+  const diamond = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  diamond.setAttribute('points', pts);
+  diamond.setAttribute('fill', col);
+  diamond.setAttribute('fill-opacity', '0.8');
+  diamond.setAttribute('stroke', col);
+  diamond.setAttribute('stroke-width', '1');
+  diamond.setAttribute('vector-effect', 'non-scaling-stroke');
+  g.appendChild(diamond);
+  return g;
+}
+
+// ============================================================
+// AIRFIELD ICON (triangle outline)
+// ============================================================
+function makeAirportIcon(wx, wy) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'airport-marker');
+  const svgY = SIZE - wy;
+  const r = 200; // world metres
+  // Triangle pointing up (north)
+  const pts = `${wx},${svgY - r} ${wx + r},${svgY + r * 0.6} ${wx - r},${svgY + r * 0.6}`;
+  const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  tri.setAttribute('points', pts);
+  tri.setAttribute('fill', 'none');
+  tri.setAttribute('stroke', '#D9763C');
+  tri.setAttribute('stroke-width', '2');
+  tri.setAttribute('vector-effect', 'non-scaling-stroke');
+  g.appendChild(tri);
+  // Cross/runway mark inside
+  const cross = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  cross.setAttribute('x1', wx); cross.setAttribute('y1', svgY - r * 0.3);
+  cross.setAttribute('x2', wx); cross.setAttribute('y2', svgY + r * 0.5);
+  cross.setAttribute('stroke', '#D9763C');
+  cross.setAttribute('stroke-width', '1.5');
+  cross.setAttribute('vector-effect', 'non-scaling-stroke');
+  g.appendChild(cross);
+  return g;
+}
+
+// ============================================================
+// RENDER MAP DATA
+// ============================================================
+function renderMap(mapName) {
+  if (!mapData) return;
+  const data = mapData[mapName];
+  if (!data) return;
+
+  SIZE = data.size;
+  applyTransform(); // update in case SIZE changed
+
+  // Update stats
+  document.getElementById('stat-towns').textContent = data.towns.length;
+  document.getElementById('stat-spawns').textContent = data.spawns.length;
+  document.getElementById('stat-airports').textContent = data.airports.length;
+  document.getElementById('stat-size').textContent = (SIZE / 1000).toFixed(0);
+
+  // Clip rect
+  const clipRect = document.getElementById('map-clip-rect');
+  clipRect.setAttribute('width', SIZE);
+  clipRect.setAttribute('height', SIZE);
+
+  renderGrid();
+  renderRings(data.towns);
+  renderAirports(data.airports);
+  renderSpawns(data.spawns);
+  renderTowns(data.towns);
+  renderLabels(data.towns);
+}
+
+function renderRings(towns) {
+  const g = document.getElementById('g-rings');
+  g.innerHTML = '';
+  const show = document.getElementById('show-rings').checked;
+  if (!show) return;
+  const RING_R = 600; // metres
+  towns.forEach(t => {
+    const [wx, wy] = t.pos;
+    const svgY = SIZE - wy;
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('class', 'capture-ring');
+    circle.setAttribute('cx', wx);
+    circle.setAttribute('cy', svgY);
+    circle.setAttribute('r', RING_R);
+    g.appendChild(circle);
+  });
+}
+
+function renderAirports(airports) {
+  const g = document.getElementById('g-airports');
+  g.innerHTML = '';
+  const show = document.getElementById('show-airports').checked;
+  if (!show) return;
+  airports.forEach(a => {
+    const [wx, wy] = a.pos;
+    g.appendChild(makeAirportIcon(wx, wy));
+  });
+}
+
+function renderSpawns(spawns) {
+  const g = document.getElementById('g-spawns');
+  g.innerHTML = '';
+  const show = document.getElementById('show-spawns').checked;
+  if (!show) return;
+  spawns.forEach(s => {
+    const [wx, wy] = s.pos;
+    g.appendChild(makeSpawnIcon(wx, wy, s.side));
+  });
+}
+
+function renderTowns(towns) {
+  const g = document.getElementById('g-towns');
+  g.innerHTML = '';
+  const show = document.getElementById('show-towns').checked;
+  if (!show) return;
+
+  towns.forEach((t, idx) => {
+    const [wx, wy] = t.pos;
+    const svgY = SIZE - wy;
+    const r = townRadius(t.value);
+
+    const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    grp.setAttribute('class', 'town-marker');
+    grp.setAttribute('data-town', t.name);
+    grp.setAttribute('data-idx', idx);
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('class', 'body');
+    circle.setAttribute('cx', wx);
+    circle.setAttribute('cy', svgY);
+    circle.setAttribute('r', r);
+
+    grp.appendChild(circle);
+
+    // Click to inspect
+    grp.addEventListener('click', (evt) => {
+      evt.stopPropagation();
+      selectTown(t, idx, grp);
+    });
+
+    g.appendChild(grp);
+  });
+}
+
+function renderLabels(towns) {
+  const g = document.getElementById('g-labels');
+  g.innerHTML = '';
+  const show = document.getElementById('show-labels').checked;
+  if (!show) return;
+
+  towns.forEach(t => {
+    const [wx, wy] = t.pos;
+    const svgY = SIZE - wy;
+    const r = townRadius(t.value);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('class', 'town-label');
+    text.setAttribute('x', wx);
+    // Place label above the circle (offset up in SVG space = smaller Y)
+    text.setAttribute('y', svgY - r - 60);
+    text.setAttribute('text-anchor', 'middle');
+    // Font size in world metres — scales with zoom. ~320m at normal zoom is ~10px.
+    text.setAttribute('font-size', '260');
+    text.setAttribute('fill', 'var(--bone)');
+    text.setAttribute('opacity', '0.85');
+    text.setAttribute('font-family', "'JetBrains Mono', monospace");
+    text.textContent = t.name;
+    g.appendChild(text);
+  });
+}
+
+// ============================================================
+// SELECTION
+// ============================================================
+function selectTown(t, idx, grpEl) {
+  // Deselect old
+  document.querySelectorAll('.town-marker.sel').forEach(el => el.classList.remove('sel'));
+  selectedTown = t;
+  grpEl.classList.add('sel');
+  renderInspector(t);
+}
+
+function renderInspector(t) {
+  const body = document.getElementById('inspector-body');
+  const typeHtml = (t.type || []).map(tp =>
+    `<span class="type-chip">${tp}</span>`
+  ).join('');
+  body.innerHTML = `
+    <div class="inspector-name">${t.name}</div>
+    <div class="inspector-pos">pos: [${t.pos[0].toFixed(1)}, ${t.pos[1].toFixed(1)}]</div>
+    <div class="inspector-row"><span class="key">Start SV</span><span class="val">${t.startSV}</span></div>
+    <div class="inspector-row"><span class="key">Max SV</span><span class="val">${t.maxSV}</span></div>
+    <div class="inspector-row"><span class="key">Value</span><span class="val">${t.value}</span></div>
+    <div class="inspector-row"><span class="key">Dubbing</span><span class="val">${t.dubbing || '–'}</span></div>
+    <div style="margin-top:12px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad;">Type</div>
+    <div class="type-chips" style="margin-top:6px">${typeHtml || '<span style="color:#5a6470">–</span>'}</div>
+  `;
+}
+
+// ============================================================
+// LAYER TOGGLES
+// ============================================================
+function bindToggle(id, renderFn) {
+  document.getElementById(id).addEventListener('change', () => {
+    if (!mapData) return;
+    const data = mapData[activeMap];
+    renderFn(data);
+  });
+}
+
+// ============================================================
+// PAN / ZOOM
+// ============================================================
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+let camStart = { tx: 0, ty: 0 };
+
+svg.addEventListener('mousedown', evt => {
+  if (evt.button !== 0) return;
+  // Only pan on empty space (not on town markers — they have their own click)
+  isPanning = true;
+  panStart = { x: evt.clientX, y: evt.clientY };
+  camStart = { tx: cam.tx, ty: cam.ty };
+  svg.classList.add('panning');
+});
+
+window.addEventListener('mousemove', evt => {
+  if (!isPanning) {
+    // Update coords badge
+    const sc = svgCoords(evt);
+    const w = svgToWorld(sc.x, sc.y);
+    const cb = document.getElementById('coords-badge');
+    if (w.x >= 0 && w.x <= SIZE && w.y >= 0 && w.y <= SIZE) {
+      cb.textContent = `x: ${w.x.toFixed(0)}  y: ${w.y.toFixed(0)}`;
+    } else {
+      cb.textContent = 'x: —  y: —';
+    }
+    return;
+  }
+  const dx = evt.clientX - panStart.x;
+  const dy = evt.clientY - panStart.y;
+  cam.tx = camStart.tx + dx;
+  cam.ty = camStart.ty + dy;
+  applyTransform();
+});
+
+window.addEventListener('mouseup', () => {
+  isPanning = false;
+  svg.classList.remove('panning');
+});
+
+// Zoom with scroll wheel, centred on cursor
+svg.addEventListener('wheel', evt => {
+  evt.preventDefault();
+  const factor = evt.deltaY < 0 ? 1.12 : 1 / 1.12;
+  const sc = svgCoords(evt);
+
+  // Zoom about the cursor point
+  cam.tx = sc.x - (sc.x - cam.tx) * factor;
+  cam.ty = sc.y - (sc.y - cam.ty) * factor;
+  cam.s *= factor;
+  cam.s = Math.max(0.02, Math.min(cam.s, 20));
+  applyTransform();
+  updateScaleBadge();
+}, { passive: false });
+
+document.getElementById('btn-zoom-in').addEventListener('click', () => {
+  const rect = svg.getBoundingClientRect();
+  const cx = rect.width / 2, cy = rect.height / 2;
+  const f = 1.4;
+  cam.tx = cx - (cx - cam.tx) * f;
+  cam.ty = cy - (cy - cam.ty) * f;
+  cam.s *= f;
+  applyTransform(); updateScaleBadge();
+});
+
+document.getElementById('btn-zoom-out').addEventListener('click', () => {
+  const rect = svg.getBoundingClientRect();
+  const cx = rect.width / 2, cy = rect.height / 2;
+  const f = 1 / 1.4;
+  cam.tx = cx - (cx - cam.tx) * f;
+  cam.ty = cy - (cy - cam.ty) * f;
+  cam.s *= f;
+  applyTransform(); updateScaleBadge();
+});
+
+document.getElementById('btn-zoom-fit').addEventListener('click', fitMap);
+
+// ============================================================
+// MAP SWITCHER
+// ============================================================
+document.getElementById('map-switcher').addEventListener('click', evt => {
+  const btn = evt.target.closest('button[data-map]');
+  if (!btn) return;
+  const name = btn.dataset.map;
+  if (name === activeMap) return;
+  activeMap = name;
+  document.querySelectorAll('#map-switcher button').forEach(b => b.classList.toggle('on', b.dataset.map === name));
+  selectedTown = null;
+  document.getElementById('inspector-body').innerHTML = '<div class="inspector-empty">No town selected.<br>Click any town marker on the map to inspect its properties.</div>';
+  // Update SIZE before fitMap
+  if (mapData && mapData[name]) SIZE = mapData[name].size;
+  fitMap();
+  renderMap(name);
+});
+
+// ============================================================
+// LAYER TOGGLE BINDINGS
+// ============================================================
+document.getElementById('show-towns').addEventListener('change', () => {
+  if (!mapData) return;
+  renderTowns(mapData[activeMap].towns);
+});
+document.getElementById('show-rings').addEventListener('change', () => {
+  if (!mapData) return;
+  renderRings(mapData[activeMap].towns);
+});
+document.getElementById('show-spawns').addEventListener('change', () => {
+  if (!mapData) return;
+  renderSpawns(mapData[activeMap].spawns);
+});
+document.getElementById('show-airports').addEventListener('change', () => {
+  if (!mapData) return;
+  renderAirports(mapData[activeMap].airports);
+});
+document.getElementById('show-grid').addEventListener('change', () => {
+  if (!mapData) return;
+  if (document.getElementById('show-grid').checked) {
+    renderGrid();
+  } else {
+    document.getElementById('g-grid').innerHTML = '';
+  }
+});
+document.getElementById('show-labels').addEventListener('change', () => {
+  if (!mapData) return;
+  renderLabels(mapData[activeMap].towns);
+});
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+  try {
+    const resp = await fetch('assets/data/seed-towns.json');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    mapData = await resp.json();
+    activeMap = 'chernarus';
+    SIZE = mapData.chernarus.size;
+
+    // Wait for stage to have dimensions
+    requestAnimationFrame(() => {
+      fitMap();
+      renderMap(activeMap);
+    });
+  } catch (err) {
+    console.error('Failed to load seed-towns.json:', err);
+  }
+}
+
+// Re-fit on resize
+const ro = new ResizeObserver(() => {
+  if (!mapData) return;
+  fitMap();
+});
+ro.observe(document.getElementById('stage'));
+
+init();
+</script>
+</body>
+</html>
