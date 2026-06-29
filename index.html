@@ -296,6 +296,65 @@
   }
   .io-textarea:focus{border-color:var(--orange)}
   .io-change-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad;margin:10px 0 5px;display:block}
+
+  /* ---- Strategy overlays ---- */
+  .strategy-section{margin-top:4px}
+  .strategy-coef-row{display:flex;align-items:center;gap:7px;margin:4px 0 0;padding-left:20px;font-size:11px;color:#9aa3ad}
+  .strategy-coef-row input[type=number]{
+    width:52px;background:var(--gunmetal);border:1px solid var(--line);border-radius:4px;
+    color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:11px;
+    padding:2px 6px;outline:none;text-align:center
+  }
+  .strategy-coef-row input:focus{border-color:var(--orange)}
+  .strategy-capture-row{display:flex;align-items:center;gap:7px;margin:4px 0 0;padding-left:20px;font-size:11px;color:#9aa3ad}
+  .strategy-capture-row input[type=number]{
+    width:52px;background:var(--gunmetal);border:1px solid var(--line);border-radius:4px;
+    color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:11px;
+    padding:2px 6px;outline:none;text-align:center
+  }
+  .strategy-capture-row input:focus{border-color:var(--orange)}
+
+  .paint-mode-btn{
+    display:flex;align-items:center;gap:7px;width:100%;
+    background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;
+    padding:7px 10px;cursor:pointer;font-size:12px;color:var(--bone);
+    font-family:Inter,sans-serif;margin-top:6px;text-align:left
+  }
+  .paint-mode-btn:hover{border-color:var(--orange);color:var(--orange)}
+  .paint-mode-btn.active{border-color:var(--orange);background:#1a1e15;color:var(--orange)}
+  .paint-side-picker{display:flex;gap:5px;margin:5px 0 2px;flex-wrap:wrap}
+  .paint-side-btn{
+    flex:1;min-width:40px;border:1px solid var(--line);border-radius:4px;padding:5px 4px;
+    background:var(--gunmetal);color:var(--bone);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-align:center
+  }
+  .paint-side-btn:hover{opacity:.85}
+  .paint-side-btn.active-paint{box-shadow:0 0 0 2px var(--chalk);opacity:1}
+
+  .side-totals-panel{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .side-total-cell{background:var(--gunmetal);border:1px solid var(--line);border-radius:5px;padding:6px 8px}
+  .side-total-cell .side-name{font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;font-weight:600}
+  .side-total-cell .side-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--bone)}
+  .side-total-cell .side-income{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b939c;margin-top:2px}
+
+  /* SVG overlay elements */
+  .frontline-edge{fill:none;stroke:rgba(255,255,80,0.55);stroke-width:2.5;stroke-dasharray:400 200;
+    vector-effect:non-scaling-stroke;pointer-events:none}
+  .frontline-node{fill:rgba(255,255,80,0.18);stroke:rgba(255,255,80,0.55);stroke-width:1.5;
+    vector-effect:non-scaling-stroke;pointer-events:none}
+  .dist-ring{fill:none;stroke-width:1.5;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.55}
+  .income-label-svg{font-family:'JetBrains Mono',monospace;pointer-events:none;dominant-baseline:middle;text-anchor:middle}
+  .contested-ring{fill:none;stroke:#f5d742;stroke-width:3;vector-effect:non-scaling-stroke;
+    pointer-events:none;opacity:.8;stroke-dasharray:300 150}
+
+  /* Inspector side selector */
+  .insp-side-select{
+    background:var(--gunmetal);border:1px solid var(--line);border-radius:4px;
+    color:var(--bone);font-family:'JetBrains Mono',monospace;font-size:12px;
+    padding:3px 6px;outline:none;cursor:pointer
+  }
+  .insp-side-select:focus{border-color:var(--orange)}
+  /* Capture estimate display in inspector */
+  .capture-est{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--orange)}
 </style>
 </head>
 <body>
@@ -427,6 +486,99 @@
 
       <div class="divider"></div>
 
+      <label>Strategy</label>
+      <div class="strategy-section">
+
+        <!-- Ownership painting -->
+        <div class="toggle-row" id="strategy-ownership-row">
+          <input type="checkbox" id="show-ownership"> Ownership colouring
+        </div>
+
+        <!-- Paint mode -->
+        <button class="paint-mode-btn" id="btn-paint-mode" style="margin-top:4px">
+          <div class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--orange);flex:0 0 auto;opacity:.7"></div>
+          Paint side mode
+        </button>
+        <div id="paint-side-picker" class="paint-side-picker" style="display:none;padding-left:4px">
+          <button class="paint-side-btn" data-paint-side="west"    style="border-color:var(--west);color:var(--west)">WEST</button>
+          <button class="paint-side-btn" data-paint-side="east"    style="border-color:var(--east);color:var(--east)">EAST</button>
+          <button class="paint-side-btn" data-paint-side="guer"    style="border-color:var(--guer);color:var(--guer)">GUER</button>
+          <button class="paint-side-btn" data-paint-side="neutral" style="border-color:var(--neutral);color:var(--neutral)">NEUT</button>
+        </div>
+
+        <!-- Side totals readout -->
+        <div id="side-totals-panel" class="side-totals-panel" style="display:none">
+          <div class="side-total-cell">
+            <div class="side-name" style="color:var(--west)">West</div>
+            <div class="side-val" id="st-west-towns">0 towns</div>
+            <div class="side-income" id="st-west-value">val 0</div>
+          </div>
+          <div class="side-total-cell">
+            <div class="side-name" style="color:var(--east)">East</div>
+            <div class="side-val" id="st-east-towns">0 towns</div>
+            <div class="side-income" id="st-east-value">val 0</div>
+          </div>
+          <div class="side-total-cell">
+            <div class="side-name" style="color:var(--guer)">Guer</div>
+            <div class="side-val" id="st-guer-towns">0 towns</div>
+            <div class="side-income" id="st-guer-value">val 0</div>
+          </div>
+          <div class="side-total-cell">
+            <div class="side-name" style="color:var(--neutral)">Neutral</div>
+            <div class="side-val" id="st-neutral-towns">0 towns</div>
+            <div class="side-income" id="st-neutral-value">val 0</div>
+          </div>
+        </div>
+
+        <!-- Income overlay -->
+        <div class="toggle-row" style="margin-top:8px">
+          <input type="checkbox" id="show-income"> Income overlay
+        </div>
+        <div class="strategy-coef-row" id="income-coef-row" style="display:none">
+          <span>COEF</span>
+          <input type="number" id="income-coef" min="1" max="999" value="8" title="Income = value × COEF (same constant as Strategy &amp; Economy editor)">
+          <span style="color:#5a6470;font-size:10px">× value = income (≡ S&amp;E editor)</span>
+        </div>
+        <!-- Income totals (shown when income overlay on) -->
+        <div id="income-totals-panel" style="display:none;margin-top:4px">
+          <div class="side-totals-panel" style="margin-top:0">
+            <div class="side-total-cell">
+              <div class="side-name" style="color:var(--west)">West</div>
+              <div class="side-income" id="it-west">0 $/tick</div>
+            </div>
+            <div class="side-total-cell">
+              <div class="side-name" style="color:var(--east)">East</div>
+              <div class="side-income" id="it-east">0 $/tick</div>
+            </div>
+            <div class="side-total-cell">
+              <div class="side-name" style="color:var(--guer)">Guer</div>
+              <div class="side-income" id="it-guer">0 $/tick</div>
+            </div>
+            <div class="side-total-cell">
+              <div class="side-name" style="color:var(--neutral)">Neutral</div>
+              <div class="side-income" id="it-neutral">0 $/tick</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Frontline overlay -->
+        <div class="toggle-row" style="margin-top:8px">
+          <input type="checkbox" id="show-frontline"> Frontline + dist-to-front
+        </div>
+
+        <!-- Capture-time overlay -->
+        <div class="toggle-row" style="margin-top:4px">
+          <input type="checkbox" id="show-capture-est"> Capture-time estimate
+        </div>
+        <div class="strategy-capture-row" id="capture-rate-row" style="display:none">
+          <span>Rate (SV/tick)</span>
+          <input type="number" id="capture-rate" min="1" max="9999" value="5" title="Capture time ≈ maxSV ÷ rate ticks">
+        </div>
+
+      </div>
+
+      <div class="divider"></div>
+
       <label>Town Design</label>
 
       <button class="add-town-btn" id="btn-add-town">
@@ -498,6 +650,12 @@
         <g id="g-airports"></g>
         <!-- Spawns -->
         <g id="g-spawns"></g>
+        <!-- Strategy overlay: distance-to-front shading rings (below towns) -->
+        <g id="g-dist-rings"></g>
+        <!-- Strategy overlay: frontline edges -->
+        <g id="g-frontline"></g>
+        <!-- Strategy overlay: income labels (above towns) -->
+        <g id="g-income-labels"></g>
         <!-- WASP Town markers (on top) -->
         <g id="g-towns"></g>
         <!-- Town labels -->
@@ -1465,6 +1623,11 @@ function toCamel(name) {
 // INSPECTOR
 // ============================================================
 function selectTown(t, idx, grpEl) {
+  // Paint mode: clicking a town sets its side instead of opening inspector
+  if (typeof paintMode !== 'undefined' && paintMode) {
+    if (typeof paintTownSide === 'function') paintTownSide(t, idx);
+    return;
+  }
   document.querySelectorAll('.town-marker.sel').forEach(el => el.classList.remove('sel'));
   selectedTown = t;
   selectedTownIdx = idx;
@@ -2562,6 +2725,9 @@ async function init() {
       }
     });
 
+    // Wire strategy overlay controls (DOM already exists)
+    wireStrategyControls();
+
     requestAnimationFrame(() => {
       fitMap();
       renderAll();
@@ -3166,6 +3332,460 @@ function buildSqmChangeListFromLoaded() {
 
   return lines.join('\n');
 }
+
+// ============================================================
+// TASK D: STRATEGY OVERLAYS
+// ============================================================
+
+// ---- State ----
+let paintMode      = false;
+let paintSide      = 'west'; // currently selected paint-side
+const INCOME_COEF_DEFAULT  = 8;
+const CAPTURE_RATE_DEFAULT = 5;
+
+// Side colour lookup (matches CSS vars)
+const SIDE_COLORS = {
+  west:    '#5D82A3',
+  east:    '#A8503F',
+  guer:    '#5C6536',
+  neutral: '#7A8490',
+};
+
+function getSideColor(side) {
+  return SIDE_COLORS[side] || SIDE_COLORS.neutral;
+}
+
+// ---- Ownership toggle ----
+function updateOwnershipToggle() {
+  const on = document.getElementById('show-ownership').checked;
+  document.getElementById('side-totals-panel').style.display = on ? '' : 'none';
+  if (on) updateSideTotals();
+  renderTowns(); // re-colour markers
+  renderLabels();
+}
+
+// ---- Paint mode ----
+function setPaintMode(on) {
+  paintMode = on;
+  const btn = document.getElementById('btn-paint-mode');
+  btn.classList.toggle('active', on);
+  document.getElementById('paint-side-picker').style.display = on ? '' : 'none';
+  svg.style.cursor = on ? 'crosshair' : '';
+}
+
+// Paint a town's side on click (called from town mouseup when paintMode active)
+function paintTownSide(t, idx) {
+  t.side = paintSide;
+  markEdited(t);
+  updateSideTotals();
+  renderTowns();
+  // If income overlay is on, refresh it
+  if (document.getElementById('show-income').checked) renderIncomeOverlay();
+  if (document.getElementById('show-frontline').checked) renderFrontlineOverlay();
+  // Refresh inspector if this town is selected
+  if (selectedTownIdx === idx) renderInspector(t, idx);
+}
+
+// ---- Side totals ----
+function updateSideTotals() {
+  const data = getWaspData();
+  const totals = { west:{towns:0,value:0}, east:{towns:0,value:0}, guer:{towns:0,value:0}, neutral:{towns:0,value:0} };
+  if (data) {
+    data.towns.forEach(t => {
+      const s = t.side || 'neutral';
+      const key = (s === 'resistance') ? 'guer' : s;
+      if (!totals[key]) totals[key] = {towns:0,value:0};
+      totals[key].towns += 1;
+      totals[key].value += (t.value || 0);
+    });
+  }
+  const coef = parseInt(document.getElementById('income-coef').value, 10) || INCOME_COEF_DEFAULT;
+  ['west','east','guer','neutral'].forEach(k => {
+    const d = totals[k] || {towns:0,value:0};
+    const tEl = document.getElementById(`st-${k}-towns`);
+    const vEl = document.getElementById(`st-${k}-value`);
+    if (tEl) tEl.textContent = `${d.towns} town${d.towns !== 1 ? 's' : ''}`;
+    if (vEl) vEl.textContent = `val ${d.value}`;
+    // Income totals panel
+    const iEl = document.getElementById(`it-${k}`);
+    if (iEl) iEl.textContent = `${d.value * coef} $/tick`;
+  });
+}
+
+// ---- Income overlay ----
+function renderIncomeOverlay() {
+  const g = document.getElementById('g-income-labels');
+  g.innerHTML = '';
+  const on = document.getElementById('show-income').checked;
+  // Show/hide coef row and totals panel
+  document.getElementById('income-coef-row').style.display   = on ? '' : 'none';
+  document.getElementById('income-totals-panel').style.display = on ? '' : 'none';
+  if (!on) return;
+
+  const data = getWaspData();
+  if (!data) return;
+  const coef = parseInt(document.getElementById('income-coef').value, 10) || INCOME_COEF_DEFAULT;
+  updateSideTotals();
+
+  data.towns.forEach(t => {
+    const [wx, wy] = t.pos;
+    const svgY = SIZE - wy;
+    const r = townRadius(t.value);
+    const income = t.value * coef;
+    const sideCol = getSideColor(t.side || 'neutral');
+
+    // Pill background
+    const pillW = 600, pillH = 200;
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', wx - pillW/2);
+    rect.setAttribute('y', svgY - r - 430);
+    rect.setAttribute('width', pillW);
+    rect.setAttribute('height', pillH);
+    rect.setAttribute('rx', 100);
+    rect.setAttribute('fill', 'rgba(14,17,20,0.82)');
+    rect.setAttribute('stroke', sideCol);
+    rect.setAttribute('stroke-width', '1.5');
+    rect.setAttribute('vector-effect', 'non-scaling-stroke');
+    rect.setAttribute('pointer-events', 'none');
+    g.appendChild(rect);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('class', 'income-label-svg');
+    text.setAttribute('x', wx);
+    text.setAttribute('y', svgY - r - 330);
+    text.setAttribute('font-size', '170');
+    text.setAttribute('fill', sideCol);
+    text.textContent = `$${income}`;
+    g.appendChild(text);
+  });
+}
+
+// ---- Frontline + distance-to-front overlay ----
+function renderFrontlineOverlay() {
+  const gFront = document.getElementById('g-frontline');
+  const gDist  = document.getElementById('g-dist-rings');
+  gFront.innerHTML = '';
+  gDist.innerHTML  = '';
+
+  const on = document.getElementById('show-frontline').checked;
+  if (!on) return;
+
+  const data = getWaspData();
+  if (!data) return;
+
+  const westTowns = data.towns.filter(t => t.side === 'west');
+  const eastTowns = data.towns.filter(t => t.side === 'east');
+
+  if (westTowns.length === 0 || eastTowns.length === 0) return;
+
+  // --- Distance-to-front shading ---
+  // For each town, compute nearest enemy distance
+  // WEST towns: nearest east; EAST towns: nearest west; others: min of both
+  function nearestDist(town, enemies) {
+    let minD = Infinity;
+    for (const e of enemies) {
+      const dx = town.pos[0] - e.pos[0];
+      const dy = town.pos[1] - e.pos[1];
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < minD) minD = d;
+    }
+    return minD;
+  }
+
+  // Find global max distance for colour scaling
+  let maxDist = 0;
+  data.towns.forEach(t => {
+    const side = t.side || 'neutral';
+    if (side === 'west' || side === 'east') {
+      const enemies = side === 'west' ? eastTowns : westTowns;
+      const d = nearestDist(t, enemies);
+      if (d > maxDist) maxDist = d;
+    }
+  });
+
+  const CONTESTED_THRESHOLD = 2500; // world metres — towns within this distance are "contested"
+
+  data.towns.forEach(t => {
+    const [wx, wy] = t.pos;
+    const svgY = SIZE - wy;
+    const r = townRadius(t.value);
+    const side = t.side || 'neutral';
+
+    let dist = null;
+    let enemies = null;
+    if (side === 'west')    { enemies = eastTowns; }
+    else if (side === 'east') { enemies = westTowns; }
+    else {
+      // Neutral/guer: dist to nearest of either side
+      const dW = westTowns.length ? nearestDist(t, westTowns) : Infinity;
+      const dE = eastTowns.length ? nearestDist(t, eastTowns) : Infinity;
+      dist = Math.min(dW, dE);
+    }
+    if (enemies) dist = nearestDist(t, enemies);
+
+    if (dist === null || dist === Infinity) return;
+
+    // Shade ring: closer to front = more opaque, warmer
+    const proximity = Math.max(0, 1 - dist / (maxDist || 1)); // 0=far, 1=very close
+    const ringR = r * 1.55;
+
+    // Colour: west=blue→yellow, east=red→yellow, neutral=grey
+    let ringCol;
+    if (side === 'west')         ringCol = `rgba(93,130,163,${(proximity * 0.55).toFixed(2)})`;
+    else if (side === 'east')    ringCol = `rgba(168,80,63,${(proximity * 0.55).toFixed(2)})`;
+    else if (side === 'guer')    ringCol = `rgba(92,101,54,${(proximity * 0.45).toFixed(2)})`;
+    else                         ringCol = `rgba(122,132,144,${(proximity * 0.35).toFixed(2)})`;
+
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('class', 'dist-ring');
+    ring.setAttribute('cx', wx);
+    ring.setAttribute('cy', svgY);
+    ring.setAttribute('r', ringR);
+    ring.setAttribute('stroke', ringCol);
+    ring.setAttribute('fill', ringCol.replace(/[\d.]+\)$/, (proximity * 0.18).toFixed(2) + ')'));
+    gDist.appendChild(ring);
+
+    // Contested highlight ring
+    if (dist < CONTESTED_THRESHOLD && (side === 'west' || side === 'east')) {
+      const contested = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      contested.setAttribute('class', 'contested-ring');
+      contested.setAttribute('cx', wx);
+      contested.setAttribute('cy', svgY);
+      contested.setAttribute('r', r * 1.85);
+      gDist.appendChild(contested);
+    }
+  });
+
+  // --- Frontline edges ---
+  // Algorithm: for each WEST town, find its nearest EAST town; draw the perpendicular
+  // bisector segment between them. To keep it uncluttered, limit to each town's
+  // closest 2 enemies. Draw line at the midpoint perpendicular to the pair axis.
+
+  const drawn = new Set();
+
+  westTowns.forEach(wt => {
+    // Sort east towns by distance
+    const sorted = eastTowns
+      .map(et => {
+        const dx = wt.pos[0] - et.pos[0];
+        const dy = wt.pos[1] - et.pos[1];
+        return { et, d: Math.sqrt(dx*dx + dy*dy) };
+      })
+      .sort((a,b) => a.d - b.d)
+      .slice(0, 2); // nearest 2
+
+    sorted.forEach(({ et, d }) => {
+      const key = [wt.name, et.name].sort().join('|');
+      if (drawn.has(key)) return;
+      drawn.add(key);
+
+      // Midpoint
+      const mx = (wt.pos[0] + et.pos[0]) / 2;
+      const my = (wt.pos[1] + et.pos[1]) / 2;
+
+      // Direction vector (west→east), normalise
+      const dx = et.pos[0] - wt.pos[0];
+      const dy = et.pos[1] - wt.pos[1];
+      const len = Math.sqrt(dx*dx + dy*dy) || 1;
+
+      // Perpendicular direction (rotate 90°)
+      const px = -dy / len;
+      const py =  dx / len;
+
+      // Segment half-length: half of the pair distance, capped
+      const halfLen = Math.min(d / 2, 3000);
+
+      const x1 = mx + px * halfLen;
+      const y1 = my + py * halfLen;
+      const x2 = mx - px * halfLen;
+      const y2 = my - py * halfLen;
+
+      // SVG Y is flipped
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('class', 'frontline-edge');
+      line.setAttribute('x1', x1);
+      line.setAttribute('y1', SIZE - y1);
+      line.setAttribute('x2', x2);
+      line.setAttribute('y2', SIZE - y2);
+      gFront.appendChild(line);
+
+      // Midpoint node dot
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('class', 'frontline-node');
+      dot.setAttribute('cx', mx);
+      dot.setAttribute('cy', SIZE - my);
+      dot.setAttribute('r', 160);
+      gFront.appendChild(dot);
+    });
+  });
+}
+
+// ---- Capture-time overlay (shown in inspector + labels) ----
+function renderCaptureOverlay() {
+  // The capture estimate is shown in the inspector row (see renderInspector additions).
+  // Here we handle the rate-row visibility toggle.
+  const on = document.getElementById('show-capture-est').checked;
+  document.getElementById('capture-rate-row').style.display = on ? '' : 'none';
+  // If a town is selected, refresh inspector to show/hide the estimate
+  if (selectedTown !== null && selectedTownIdx >= 0) {
+    renderInspector(selectedTown, selectedTownIdx);
+  }
+}
+
+// ---- Patch renderTowns to colour by side when ownership is on ----
+const _origRenderTowns = renderTowns;
+renderTowns = function() {
+  _origRenderTowns();
+  const ownerOn = document.getElementById('show-ownership') &&
+                  document.getElementById('show-ownership').checked;
+  if (!ownerOn) return;
+  // After renderTowns populates g-towns, recolour each marker's body circle
+  const data = getWaspData();
+  if (!data) return;
+  document.querySelectorAll('.town-marker').forEach(grp => {
+    const idx = parseInt(grp.getAttribute('data-idx'));
+    if (isNaN(idx)) return;
+    const t = data.towns[idx];
+    if (!t) return;
+    const col = getSideColor(t.side || 'neutral');
+    const circle = grp.querySelector('circle.body');
+    if (circle) circle.setAttribute('fill', col);
+  });
+};
+
+// ---- Patch renderAll to include strategy layers ----
+const _origRenderAll = renderAll;
+renderAll = function() {
+  _origRenderAll();
+  renderIncomeOverlay();
+  renderFrontlineOverlay();
+  renderCaptureOverlay();
+  // Re-apply ownership colours (renderTowns is already patched above)
+};
+
+// ---- Controls wiring ----
+function wireStrategyControls() {
+  // Ownership toggle
+  document.getElementById('show-ownership').addEventListener('change', () => {
+    updateOwnershipToggle();
+    if (document.getElementById('show-frontline').checked) renderFrontlineOverlay();
+  });
+
+  // Paint mode button
+  document.getElementById('btn-paint-mode').addEventListener('click', () => {
+    setPaintMode(!paintMode);
+    // Make sure ownership is on when paint mode activates
+    if (paintMode && !document.getElementById('show-ownership').checked) {
+      document.getElementById('show-ownership').checked = true;
+      updateOwnershipToggle();
+    }
+  });
+
+  // Paint side buttons
+  document.querySelectorAll('.paint-side-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      paintSide = btn.getAttribute('data-paint-side');
+      document.querySelectorAll('.paint-side-btn').forEach(b => b.classList.remove('active-paint'));
+      btn.classList.add('active-paint');
+    });
+  });
+  // Default active paint side
+  const defaultPaintBtn = document.querySelector(`.paint-side-btn[data-paint-side="west"]`);
+  if (defaultPaintBtn) defaultPaintBtn.classList.add('active-paint');
+
+  // Income overlay toggle
+  document.getElementById('show-income').addEventListener('change', () => {
+    renderIncomeOverlay();
+  });
+  // COEF field
+  document.getElementById('income-coef').addEventListener('input', () => {
+    if (document.getElementById('show-income').checked) renderIncomeOverlay();
+    if (document.getElementById('show-ownership').checked) updateSideTotals();
+  });
+
+  // Frontline toggle
+  document.getElementById('show-frontline').addEventListener('change', () => {
+    renderFrontlineOverlay();
+  });
+
+  // Capture-time toggle
+  document.getElementById('show-capture-est').addEventListener('change', () => {
+    renderCaptureOverlay();
+  });
+  document.getElementById('capture-rate').addEventListener('input', () => {
+    if (document.getElementById('show-capture-est').checked) {
+      renderCaptureOverlay(); // refreshes inspector
+    }
+  });
+}
+
+// ---- Patch renderInspector to add side selector + capture estimate ----
+const _origRenderInspector = renderInspector;
+renderInspector = function(t, idx) {
+  _origRenderInspector(t, idx);
+
+  const body = document.getElementById('inspector-body');
+  if (!body) return;
+
+  // ------ Side selector ------
+  const sideDiv = document.createElement('div');
+  sideDiv.className = 'inspector-row';
+  sideDiv.style.marginTop = '10px';
+  sideDiv.style.paddingTop = '10px';
+  sideDiv.style.borderTop = '1px solid var(--line)';
+
+  const curSide = t.side || 'neutral';
+  sideDiv.innerHTML = `
+    <span class="key">Ownership</span>
+    <select class="insp-side-select" id="insp-side-sel">
+      <option value="neutral" ${curSide==='neutral'?'selected':''}>Neutral</option>
+      <option value="west"    ${curSide==='west'   ?'selected':''}>WEST</option>
+      <option value="east"    ${curSide==='east'   ?'selected':''}>EAST</option>
+      <option value="guer"    ${curSide==='guer'   ?'selected':''}>GUER</option>
+    </select>`;
+
+  // Insert before the delete button
+  const delBtn = body.querySelector('#btn-delete-town');
+  if (delBtn) {
+    body.insertBefore(sideDiv, delBtn);
+  } else {
+    body.appendChild(sideDiv);
+  }
+
+  document.getElementById('insp-side-sel').addEventListener('change', (e) => {
+    t.side = e.target.value;
+    markEdited(t);
+    if (document.getElementById('show-ownership').checked) {
+      updateSideTotals();
+      renderTowns();
+    }
+    if (document.getElementById('show-income').checked) renderIncomeOverlay();
+    if (document.getElementById('show-frontline').checked) renderFrontlineOverlay();
+  });
+
+  // ------ Capture-time estimate ------
+  const captureOn = document.getElementById('show-capture-est') &&
+                    document.getElementById('show-capture-est').checked;
+  if (captureOn) {
+    const rate = parseInt(document.getElementById('capture-rate').value, 10) || CAPTURE_RATE_DEFAULT;
+    const ticks = Math.ceil((t.maxSV || 0) / rate);
+    const estDiv = document.createElement('div');
+    estDiv.className = 'inspector-row';
+    estDiv.innerHTML = `
+      <span class="key">Capture est.</span>
+      <span class="capture-est" title="≈ maxSV (${t.maxSV}) ÷ rate (${rate}) ticks">~${ticks} ticks</span>`;
+    if (delBtn) body.insertBefore(estDiv, delBtn);
+    else body.appendChild(estDiv);
+  }
+};
+
+// Also patch refreshTownOnMap to re-apply strategy overlays
+const _origRefreshTownOnMap = refreshTownOnMap;
+refreshTownOnMap = function(t, idx) {
+  _origRefreshTownOnMap(t, idx);
+  if (document.getElementById('show-income').checked) renderIncomeOverlay();
+  if (document.getElementById('show-frontline').checked) renderFrontlineOverlay();
+};
 
 init();
 </script>
