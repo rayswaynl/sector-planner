@@ -98,8 +98,24 @@
   .town-marker.sel circle.body{fill:var(--orange);stroke:var(--chalk);stroke-width:2}
   .town-label{fill:var(--bone);font-family:'JetBrains Mono',monospace;font-size:10px;text-anchor:middle;pointer-events:none;opacity:.9}
 
-  .spawn-marker{pointer-events:none}
-  .airport-marker{pointer-events:none}
+  /* ---- Camp markers ---- */
+  .camp-marker{cursor:pointer;transition:opacity .15s}
+  .camp-marker circle.body{fill:#4a7a5c;stroke:#a8d4b0;stroke-width:1;vector-effect:non-scaling-stroke;opacity:.85}
+  .camp-marker:hover circle.body{fill:#6aaa7c;opacity:1}
+  .camp-marker.sel circle.body{fill:#6aaa7c;stroke:var(--chalk);stroke-width:2}
+  .camp-link{fill:none;stroke:#4a7a5c;stroke-width:1;stroke-dasharray:120 80;opacity:.45;vector-effect:non-scaling-stroke;pointer-events:none}
+
+  /* ---- Defense markers ---- */
+  .defense-marker{cursor:pointer;transition:opacity .15s}
+  .defense-marker rect{fill:#7a4a2a;stroke:#d4905a;stroke-width:1;vector-effect:non-scaling-stroke;opacity:.85}
+  .defense-marker:hover rect{fill:#aa6a3a;opacity:1}
+  .defense-marker.sel rect{fill:#aa6a3a;stroke:var(--chalk);stroke-width:2}
+  .defense-label-svg{fill:#d4905a;font-family:'JetBrains Mono',monospace;pointer-events:none;opacity:.85}
+
+  .spawn-marker{cursor:pointer;transition:opacity .15s}
+  .spawn-marker.sel polygon{stroke:var(--chalk);stroke-width:2;stroke-opacity:1}
+  .airport-marker{cursor:pointer;transition:opacity .15s}
+  .airport-marker.sel polygon{stroke:var(--chalk);stroke-width:2.5}
 
   /* ---- Location markers (CfgWorlds reference data) ---- */
   .loc-capital{pointer-events:none}
@@ -317,6 +333,12 @@
       <div class="toggle-row indent" id="wasp-rings-row">
         <input type="checkbox" id="show-rings" checked> Capture rings (600 m)
       </div>
+      <div class="toggle-row indent" id="wasp-camps-row">
+        <input type="checkbox" id="show-camps" checked> Camps
+      </div>
+      <div class="toggle-row indent" id="wasp-defenses-row">
+        <input type="checkbox" id="show-defenses" checked> Defenses
+      </div>
       <div class="toggle-row indent" id="wasp-spawns-row">
         <input type="checkbox" id="show-spawns" checked> Spawn points
       </div>
@@ -348,6 +370,8 @@
       <!-- WASP towns -->
       <div class="legend-item"><div class="legend-dot" style="background:var(--neutral);border:1px solid var(--bone)"></div>WASP Town</div>
       <div class="legend-item"><div class="legend-ring" style="border-color:rgba(217,118,60,.5)"></div>Capture ring (600 m)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4a7a5c;border:1px solid #a8d4b0"></div>Camp</div>
+      <div class="legend-item"><div class="legend-diamond" style="background:#7a4a2a;border:1px solid #d4905a"></div>Defense logic</div>
       <!-- Locations reference layer -->
       <div class="legend-item"><div class="legend-dot" style="background:var(--loc-capital);border:2px solid #d4eaf6"></div>Capital (ref)</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--loc-city)"></div>City (ref)</div>
@@ -434,6 +458,12 @@
         <g id="g-locs-minor"></g>
         <!-- Capture rings -->
         <g id="g-rings"></g>
+        <!-- Camp connector lines (below camp markers) -->
+        <g id="g-camp-links"></g>
+        <!-- Camp markers -->
+        <g id="g-camps"></g>
+        <!-- Defense markers -->
+        <g id="g-defenses"></g>
         <!-- Airfields -->
         <g id="g-airports"></g>
         <!-- Spawns -->
@@ -847,9 +877,28 @@ function renderAirports() {
   g.innerHTML = '';
   const data = getWaspData();
   if (!data || !document.getElementById('show-airports').checked) return;
-  data.airports.forEach(a => {
+  data.airports.forEach((a, airportIdx) => {
     const [wx, wy] = a.pos;
-    g.appendChild(makeAirportIcon(wx, wy));
+    const grp = makeAirportIcon(wx, wy);
+    const isSel = selectedAirportIdx === airportIdx;
+    if (isSel) grp.classList.add('sel');
+    grp.setAttribute('data-airport-idx', airportIdx);
+
+    grp.addEventListener('mousedown', (evt) => {
+      if (evt.button !== 0) return;
+      evt.stopPropagation();
+      const sc = svgCoords(evt);
+      airportDragState = {
+        airportIdx,
+        grpEl: grp,
+        startSVG: { x: sc.x, y: sc.y },
+        startPos: [wx, wy],
+        moved: false,
+      };
+      svg.classList.add('panning');
+    });
+
+    g.appendChild(grp);
   });
 }
 
@@ -858,14 +907,182 @@ function renderSpawns() {
   g.innerHTML = '';
   const data = getWaspData();
   if (!data || !document.getElementById('show-spawns').checked) return;
-  data.spawns.forEach(s => {
+  data.spawns.forEach((s, spawnIdx) => {
     const [wx, wy] = s.pos;
-    g.appendChild(makeSpawnIcon(wx, wy, s.side));
+    const grp = makeSpawnIcon(wx, wy, s.side);
+    const isSel = selectedSpawnIdx === spawnIdx;
+    if (isSel) grp.classList.add('sel');
+    grp.setAttribute('data-spawn-idx', spawnIdx);
+
+    grp.addEventListener('mousedown', (evt) => {
+      if (evt.button !== 0) return;
+      evt.stopPropagation();
+      const sc = svgCoords(evt);
+      spawnDragState = {
+        spawnIdx,
+        grpEl: grp,
+        startSVG: { x: sc.x, y: sc.y },
+        startPos: [wx, wy],
+        moved: false,
+      };
+      svg.classList.add('panning');
+    });
+
+    g.appendChild(grp);
   });
 }
 
 // ============================================================
-// DRAG STATE
+// KNOWN DEFENSE KINDS (from data + extras)
+// ============================================================
+const ALL_DEFENSE_KINDS = ['MGNest', 'MG', 'AA', 'AT', 'GL'];
+
+// ============================================================
+// CAMP / DEFENSE / SPAWN / AIRPORT DRAG STATE
+// ============================================================
+// campDragState: { townIdx, campIdx, grpEl, startSVG, startPos, moved }
+// defenseDragState: { townIdx, defIdx, grpEl, startSVG, startPos, moved }
+// spawnDragState: { spawnIdx, grpEl, startSVG, startPos, moved }
+// airportDragState: { airportIdx, grpEl, startSVG, startPos, moved }
+let campDragState    = null;
+let defenseDragState = null;
+let spawnDragState   = null;
+let airportDragState = null;
+
+// Currently selected spawn/airport/camp/defense for inspector editing
+let selectedSpawnIdx   = -1;
+let selectedAirportIdx = -1;
+let selectedCampKey    = null; // {townIdx, campIdx}
+let selectedDefenseKey = null; // {townIdx, defIdx}
+
+// ============================================================
+// RENDER: CAMPS (draggable, linked to town)
+// ============================================================
+function renderCamps() {
+  const gLinks = document.getElementById('g-camp-links');
+  const gCamps = document.getElementById('g-camps');
+  gLinks.innerHTML = '';
+  gCamps.innerHTML = '';
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-camps').checked) return;
+
+  const CAMP_R = 80; // world-space radius for camp marker
+
+  data.towns.forEach((t, townIdx) => {
+    const camps = t.camps || [];
+    const [twx, twy] = t.pos;
+    const tsvgY = SIZE - twy;
+
+    camps.forEach((camp, campIdx) => {
+      const [cx, cy] = camp.pos;
+      const csvgY = SIZE - cy;
+
+      // Connector line from camp to town
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('class', 'camp-link');
+      line.setAttribute('x1', cx);
+      line.setAttribute('y1', csvgY);
+      line.setAttribute('x2', twx);
+      line.setAttribute('y2', tsvgY);
+      gLinks.appendChild(line);
+
+      // Camp marker group
+      const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const isSel = selectedCampKey && selectedCampKey.townIdx === townIdx && selectedCampKey.campIdx === campIdx;
+      grp.setAttribute('class', 'camp-marker' + (isSel ? ' sel' : ''));
+      grp.setAttribute('data-town-idx', townIdx);
+      grp.setAttribute('data-camp-idx', campIdx);
+
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('class', 'body');
+      circle.setAttribute('cx', cx);
+      circle.setAttribute('cy', csvgY);
+      circle.setAttribute('r', CAMP_R);
+      grp.appendChild(circle);
+
+      // Drag + click
+      grp.addEventListener('mousedown', (evt) => {
+        if (evt.button !== 0) return;
+        evt.stopPropagation();
+        const sc = svgCoords(evt);
+        campDragState = {
+          townIdx, campIdx,
+          grpEl: grp,
+          startSVG: { x: sc.x, y: sc.y },
+          startPos: [cx, cy],
+          moved: false,
+        };
+        svg.classList.add('panning');
+      });
+
+      gCamps.appendChild(grp);
+    });
+  });
+}
+
+// ============================================================
+// RENDER: DEFENSES (draggable)
+// ============================================================
+function renderDefenses() {
+  const gDef = document.getElementById('g-defenses');
+  gDef.innerHTML = '';
+  const data = getWaspData();
+  if (!data || !document.getElementById('show-defenses').checked) return;
+
+  const DEF_R = 90; // half-size of defense square
+
+  data.towns.forEach((t, townIdx) => {
+    const defenses = t.defenses || [];
+    defenses.forEach((def, defIdx) => {
+      const [dx, dy] = def.pos;
+      const dsvgY = SIZE - dy;
+
+      const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const isSel = selectedDefenseKey && selectedDefenseKey.townIdx === townIdx && selectedDefenseKey.defIdx === defIdx;
+      grp.setAttribute('class', 'defense-marker' + (isSel ? ' sel' : ''));
+      grp.setAttribute('data-town-idx', townIdx);
+      grp.setAttribute('data-def-idx', defIdx);
+
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', dx - DEF_R);
+      rect.setAttribute('y', dsvgY - DEF_R);
+      rect.setAttribute('width', DEF_R * 2);
+      rect.setAttribute('height', DEF_R * 2);
+      grp.appendChild(rect);
+
+      // Kind label
+      const kindStr = (def.kind || ['?']).join('/');
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      lbl.setAttribute('class', 'defense-label-svg');
+      lbl.setAttribute('x', dx);
+      lbl.setAttribute('y', dsvgY - DEF_R - 50);
+      lbl.setAttribute('text-anchor', 'middle');
+      lbl.setAttribute('font-size', '120');
+      lbl.textContent = kindStr;
+      grp.appendChild(lbl);
+
+      // Drag + click
+      grp.addEventListener('mousedown', (evt) => {
+        if (evt.button !== 0) return;
+        evt.stopPropagation();
+        const sc = svgCoords(evt);
+        defenseDragState = {
+          townIdx, defIdx,
+          grpEl: grp,
+          startSVG: { x: sc.x, y: sc.y },
+          startPos: [dx, dy],
+          moved: false,
+        };
+        svg.classList.add('panning');
+      });
+
+      gDef.appendChild(grp);
+    });
+  });
+}
+
+// ============================================================
+// DRAG STATE (towns)
 // ============================================================
 let dragState = null; // { town, idx, grpEl, startSVG:{x,y}, startPos:[wx,wy], moved:bool }
 const DRAG_THRESHOLD = 5; // pixels before it's considered a drag
@@ -971,7 +1188,8 @@ function renderLabels() {
 // ============================================================
 function updateWaspControlVisibility() {
   // All maps can now have towns — always show controls at full opacity
-  ['wasp-layer-row', 'wasp-rings-row', 'wasp-spawns-row', 'wasp-airports-row'].forEach(id => {
+  ['wasp-layer-row', 'wasp-rings-row', 'wasp-camps-row', 'wasp-defenses-row',
+   'wasp-spawns-row', 'wasp-airports-row'].forEach(id => {
     document.getElementById(id).style.opacity = '1';
   });
 }
@@ -983,6 +1201,8 @@ function renderAll() {
   renderGrid();
   renderLocations();
   renderRings();
+  renderCamps();
+  renderDefenses();
   renderAirports();
   renderSpawns();
   renderTowns();
@@ -1103,9 +1323,13 @@ function switchMap(mapKey) {
   // Update brand bar
   document.getElementById('bar-map-name').textContent = mapsData[mapKey].name;
 
-  // Clear inspector
-  selectedTown = null;
-  selectedTownIdx = -1;
+  // Clear inspector + sub-selections
+  selectedTown       = null;
+  selectedTownIdx    = -1;
+  selectedSpawnIdx   = -1;
+  selectedAirportIdx = -1;
+  selectedCampKey    = null;
+  selectedDefenseKey = null;
   activePreset = null;
   document.getElementById('inspector-body').innerHTML =
     '<div class="inspector-empty">No town selected.<br>Click a town marker to inspect, or use Add Town mode to place new towns.</div>';
@@ -1178,6 +1402,30 @@ function renderInspector(t, idx) {
     return `<label class="type-check-row"><input type="checkbox" data-type="${tp}" ${checked}> ${tp}</label>`;
   }).join('');
 
+  // Camps section HTML
+  const camps = t.camps || [];
+  const campsHtml = camps.map((c, ci) => `
+    <div class="inspector-row" id="camp-row-${ci}" style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--line)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#9aa3ad;flex:0 0 40px">C${ci+1}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--bone);flex:1">[${c.pos[0].toFixed(0)}, ${c.pos[1].toFixed(0)}]</span>
+      <button data-camp-del="${ci}" style="background:transparent;border:1px solid #3a3f47;border-radius:3px;color:#8b939c;font-size:10px;padding:2px 6px;cursor:pointer;font-family:inherit" title="Remove camp">✕</button>
+    </div>`).join('');
+
+  // Defenses section HTML
+  const defenses = t.defenses || [];
+  const defensesHtml = defenses.map((d, di) => {
+    const kindSel = ALL_DEFENSE_KINDS.map(k =>
+      `<option value="${k}" ${(d.kind||[]).includes(k) ? 'selected' : ''}>${k}</option>`
+    ).join('');
+    return `
+    <div class="inspector-row" id="def-row-${di}" style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--line)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#9aa3ad;flex:0 0 26px">D${di+1}</span>
+      <select data-def-kind="${di}" style="background:var(--gunmetal);border:1px solid var(--line);border-radius:3px;color:var(--bone);font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 5px;flex:1;outline:none">${kindSel}</select>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#5a6470">[${d.pos[0].toFixed(0)},${d.pos[1].toFixed(0)}]</span>
+      <button data-def-del="${di}" style="background:transparent;border:1px solid #3a3f47;border-radius:3px;color:#8b939c;font-size:10px;padding:2px 6px;cursor:pointer;font-family:inherit" title="Remove defense">✕</button>
+    </div>`;
+  }).join('');
+
   body.innerHTML = `
     <div class="inspector-name" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:4px">
       <input id="insp-name" style="background:transparent;border:none;border-bottom:1px solid var(--line);color:var(--bone);font-family:Oswald,sans-serif;font-size:18px;letter-spacing:.5px;outline:none;width:auto;min-width:60px;max-width:180px;flex:1" value="${escHtml(t.name)}">
@@ -1202,6 +1450,24 @@ function renderInspector(t, idx) {
     </div>
     <div style="margin-top:12px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad;">Type</div>
     <div class="type-checklist" style="margin-top:6px">${typeCheckHtml}</div>
+
+    <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--line)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad">Camps <span style="color:#4a7a5c">(${camps.length})</span></span>
+        <button id="btn-add-camp" style="background:var(--gunmetal);border:1px solid var(--line);border-radius:4px;color:var(--bone);font-size:10px;padding:3px 8px;cursor:pointer;font-family:inherit">+ Add</button>
+      </div>
+      <div id="camps-list">${campsHtml || '<div style="font-size:10px;color:#5a6470;padding:4px 0">No camps — click Add to place one near this town.</div>'}</div>
+    </div>
+
+    <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--line)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9aa3ad">Defenses <span style="color:#7a4a2a">(${defenses.length})</span></span>
+        <button id="btn-add-defense" style="background:var(--gunmetal);border:1px solid var(--line);border-radius:4px;color:var(--bone);font-size:10px;padding:3px 8px;cursor:pointer;font-family:inherit">+ Add</button>
+      </div>
+      <div style="font-size:10px;color:#5a6470;margin-bottom:4px;font-family:'JetBrains Mono',monospace">Drag markers on map to reposition.</div>
+      <div id="defenses-list">${defensesHtml || '<div style="font-size:10px;color:#5a6470;padding:4px 0">No defenses — click Add.</div>'}</div>
+    </div>
+
     <button class="delete-town-btn" id="btn-delete-town">
       <div class="dot"></div>Delete town
     </button>
@@ -1245,6 +1511,72 @@ function renderInspector(t, idx) {
   document.getElementById('btn-delete-town').addEventListener('click', () => {
     deleteTown(idx);
   });
+
+  // ---- Camps ----
+  document.getElementById('btn-add-camp').addEventListener('click', () => {
+    if (!t.camps) t.camps = [];
+    // Place new camp offset randomly ~200m from town
+    const angle = (t.camps.length * 137.5) * Math.PI / 180; // golden-angle spread
+    const offsetX = Math.round(Math.cos(angle) * 200);
+    const offsetY = Math.round(Math.sin(angle) * 200);
+    t.camps.push({ pos: [t.pos[0] + offsetX, t.pos[1] + offsetY] });
+    markEdited(t);
+    renderInspector(t, idx);
+    renderCamps();
+  });
+
+  // Camp delete buttons
+  body.querySelectorAll('[data-camp-del]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ci = parseInt(btn.getAttribute('data-camp-del'));
+      if (!t.camps) return;
+      t.camps.splice(ci, 1);
+      if (selectedCampKey && selectedCampKey.townIdx === idx && selectedCampKey.campIdx === ci) {
+        selectedCampKey = null;
+      }
+      markEdited(t);
+      renderInspector(t, idx);
+      renderCamps();
+    });
+  });
+
+  // ---- Defenses ----
+  document.getElementById('btn-add-defense').addEventListener('click', () => {
+    if (!t.defenses) t.defenses = [];
+    const angle = (t.defenses.length * 97.5) * Math.PI / 180;
+    const offsetX = Math.round(Math.cos(angle) * 250);
+    const offsetY = Math.round(Math.sin(angle) * 250);
+    t.defenses.push({ pos: [t.pos[0] + offsetX, t.pos[1] + offsetY], kind: ['MGNest'] });
+    markEdited(t);
+    renderInspector(t, idx);
+    renderDefenses();
+  });
+
+  // Defense kind pickers
+  body.querySelectorAll('[data-def-kind]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const di = parseInt(sel.getAttribute('data-def-kind'));
+      if (!t.defenses || !t.defenses[di]) return;
+      t.defenses[di].kind = [sel.value];
+      markEdited(t);
+      renderDefenses();
+    });
+  });
+
+  // Defense delete buttons
+  body.querySelectorAll('[data-def-del]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const di = parseInt(btn.getAttribute('data-def-del'));
+      if (!t.defenses) return;
+      t.defenses.splice(di, 1);
+      if (selectedDefenseKey && selectedDefenseKey.townIdx === idx && selectedDefenseKey.defIdx === di) {
+        selectedDefenseKey = null;
+      }
+      markEdited(t);
+      renderInspector(t, idx);
+      renderDefenses();
+    });
+  });
 }
 
 function escHtml(s) {
@@ -1269,6 +1601,139 @@ function deleteTown(idx) {
   renderAll();
   updateStatTowns();
   if (typeof updateIoButtons === 'function') updateIoButtons();
+}
+
+// ============================================================
+// SPAWN INSPECTOR
+// ============================================================
+function selectSpawn(spawnIdx) {
+  selectedSpawnIdx   = spawnIdx;
+  selectedTown       = null;
+  selectedTownIdx    = -1;
+  selectedAirportIdx = -1;
+  selectedCampKey    = null;
+  selectedDefenseKey = null;
+  document.querySelectorAll('.town-marker.sel').forEach(el => el.classList.remove('sel'));
+  renderSpawnInspector(spawnIdx);
+}
+
+function renderSpawnInspector(spawnIdx) {
+  const data = getWaspData();
+  if (!data) return;
+  const s = data.spawns[spawnIdx];
+  if (!s) return;
+  const body = document.getElementById('inspector-body');
+
+  const sideOptions = ['west','east','resistance'].map(side =>
+    `<option value="${side}" ${s.side === side ? 'selected' : ''}>${side}</option>`
+  ).join('');
+
+  body.innerHTML = `
+    <div class="inspector-name" style="font-size:15px;margin-bottom:6px">Spawn Point #${spawnIdx + 1}</div>
+    <div class="inspector-pos" id="insp-spawn-pos">pos: [${s.pos[0].toFixed(1)}, ${s.pos[1].toFixed(1)}]</div>
+    <div class="inspector-row">
+      <span class="key">Side</span>
+      <select id="insp-spawn-side" style="background:var(--gunmetal);border:1px solid var(--line);border-radius:4px;color:var(--bone);font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 6px;outline:none">
+        <option value="" ${!s.side ? 'selected' : ''}>(none)</option>
+        ${sideOptions}
+      </select>
+    </div>
+    <div class="inspector-row">
+      <span class="key">wfbe_spawn</span>
+      <input class="insp-input" id="insp-spawn-pos-ann" type="text" style="width:120px" placeholder="e.g. north" value="${escHtml(s.spawn_pos || '')}">
+    </div>
+    <div style="font-size:10px;color:#5a6470;margin-top:8px;line-height:1.5;font-family:'JetBrains Mono',monospace">
+      Drag spawn on map to reposition.<br>Side sets wfbe_default side.
+    </div>
+    <button class="delete-town-btn" id="btn-delete-spawn" style="margin-top:12px">
+      <div class="dot"></div>Delete spawn
+    </button>
+    <button class="add-town-btn" id="btn-add-spawn-here" style="margin-top:6px">
+      <div class="dot"></div>Add new spawn
+    </button>
+  `;
+
+  document.getElementById('insp-spawn-side').addEventListener('change', e => {
+    s.side = e.target.value || null;
+    renderSpawns();
+    if (typeof updateIoButtons === 'function') updateIoButtons();
+  });
+  document.getElementById('insp-spawn-pos-ann').addEventListener('change', e => {
+    s.spawn_pos = e.target.value.trim() || null;
+    if (typeof updateIoButtons === 'function') updateIoButtons();
+  });
+  document.getElementById('btn-delete-spawn').addEventListener('click', () => {
+    if (!confirm(`Delete spawn #${spawnIdx + 1}?`)) return;
+    data.spawns.splice(spawnIdx, 1);
+    selectedSpawnIdx = -1;
+    document.getElementById('inspector-body').innerHTML =
+      '<div class="inspector-empty">Spawn deleted.</div>';
+    renderSpawns();
+    document.getElementById('stat-spawns').textContent = data.spawns.length;
+  });
+  document.getElementById('btn-add-spawn-here').addEventListener('click', () => {
+    // Place near current spawn
+    const ns = { pos: [s.pos[0] + 300, s.pos[1] + 300], side: null, spawn_pos: null };
+    data.spawns.push(ns);
+    const ni = data.spawns.length - 1;
+    renderSpawns();
+    document.getElementById('stat-spawns').textContent = data.spawns.length;
+    selectSpawn(ni);
+    renderSpawns(); // re-render to show selection
+  });
+}
+
+// ============================================================
+// AIRPORT INSPECTOR
+// ============================================================
+function selectAirport(airportIdx) {
+  selectedAirportIdx = airportIdx;
+  selectedTown       = null;
+  selectedTownIdx    = -1;
+  selectedSpawnIdx   = -1;
+  selectedCampKey    = null;
+  selectedDefenseKey = null;
+  document.querySelectorAll('.town-marker.sel').forEach(el => el.classList.remove('sel'));
+  renderAirportInspector(airportIdx);
+}
+
+function renderAirportInspector(airportIdx) {
+  const data = getWaspData();
+  if (!data) return;
+  const a = data.airports[airportIdx];
+  if (!a) return;
+  const body = document.getElementById('inspector-body');
+
+  body.innerHTML = `
+    <div class="inspector-name" style="font-size:15px;margin-bottom:6px">Airfield #${airportIdx + 1}</div>
+    <div class="inspector-pos" id="insp-airport-pos">pos: [${a.pos[0].toFixed(1)}, ${a.pos[1].toFixed(1)}]</div>
+    <div style="font-size:10px;color:#5a6470;margin-top:8px;line-height:1.5;font-family:'JetBrains Mono',monospace">
+      Drag airfield on map to reposition.
+    </div>
+    <button class="delete-town-btn" id="btn-delete-airport" style="margin-top:12px">
+      <div class="dot"></div>Delete airfield
+    </button>
+    <button class="add-town-btn" id="btn-add-airport-here" style="margin-top:6px">
+      <div class="dot"></div>Add new airfield
+    </button>
+  `;
+
+  document.getElementById('btn-delete-airport').addEventListener('click', () => {
+    if (!confirm(`Delete airfield #${airportIdx + 1}?`)) return;
+    data.airports.splice(airportIdx, 1);
+    selectedAirportIdx = -1;
+    document.getElementById('inspector-body').innerHTML =
+      '<div class="inspector-empty">Airfield deleted.</div>';
+    renderAirports();
+  });
+  document.getElementById('btn-add-airport-here').addEventListener('click', () => {
+    const na = { pos: [a.pos[0] + 500, a.pos[1] + 500] };
+    data.airports.push(na);
+    const ni = data.airports.length - 1;
+    renderAirports();
+    selectAirport(ni);
+    renderAirports();
+  });
 }
 
 // ============================================================
@@ -1366,7 +1831,10 @@ function buildTownSetExport() {
       typeArg = `[${t.type.map(tp => `"${tp}"`).join(',')}]`;
     }
 
-    sqfLines.push(`// ${t.name} @ [${t.pos[0].toFixed(1)}, ${t.pos[1].toFixed(1)}]`);
+    const campNote = (t.camps || []).map((c, ci) =>
+      `C${ci+1}:[${c.pos[0].toFixed(0)},${c.pos[1].toFixed(0)}]`
+    ).join(' ');
+    sqfLines.push(`// ${t.name} @ [${t.pos[0].toFixed(1)}, ${t.pos[1].toFixed(1)}]${campNote ? '  camps: ' + campNote : ''}`);
     sqfLines.push(`[this,"${t.name}","${dub}",${t.startSV},${t.maxSV},${t.value},${typeArg}] execVM "Common\\Init\\Init_Town.sqf";`);
 
     jsonTowns.push({
@@ -1377,6 +1845,8 @@ function buildTownSetExport() {
       value: t.value,
       type: t.type || ['SmallTown1'],
       pos: [+t.pos[0].toFixed(1), +t.pos[1].toFixed(1)],
+      camps: (t.camps || []).map(c => ({ pos: [+c.pos[0].toFixed(1), +c.pos[1].toFixed(1)] })),
+      defenses: (t.defenses || []).map(d => ({ pos: [+d.pos[0].toFixed(1), +d.pos[1].toFixed(1)], kind: d.kind })),
     });
   }
 
@@ -1422,8 +1892,8 @@ let panMoved  = false; // true if the last pan gesture moved more than threshold
 
 svg.addEventListener('mousedown', evt => {
   if (evt.button !== 0) return;
-  // If a town drag is already started (mousedown on town group), don't start pan
-  if (dragState) return;
+  // If any element drag is already started, don't start pan
+  if (dragState || campDragState || defenseDragState || spawnDragState || airportDragState) return;
   isPanning = true;
   panMoved  = false;
   panStart = { x: evt.clientX, y: evt.clientY };
@@ -1439,22 +1909,102 @@ window.addEventListener('mousemove', evt => {
     const dx = sc.x - dragState.startSVG.x;
     const dy = sc.y - dragState.startSVG.y;
     const pixelDist = Math.sqrt(dx * dx + dy * dy);
-    if (pixelDist > DRAG_THRESHOLD) {
-      dragState.moved = true;
-    }
+    if (pixelDist > DRAG_THRESHOLD) dragState.moved = true;
     if (dragState.moved) {
-      // Inverse: SVG delta → world delta (Y flip: a downward SVG motion = negative world Y)
       const worldDX = dx / cam.s;
-      const worldDY = -dy / cam.s; // flip
+      const worldDY = -dy / cam.s;
       const t = dragState.town;
       t.pos[0] = dragState.startPos[0] + worldDX;
       t.pos[1] = dragState.startPos[1] + worldDY;
       markEdited(t);
-      // Show live coords in badge
       const cb = document.getElementById('coords-badge');
       cb.textContent = `x: ${t.pos[0].toFixed(0)}  y: ${t.pos[1].toFixed(0)}  (dragging)`;
-      // Fast: just update the SVG elements directly for smoothness
       updateDraggedTownPosition(t, dragState.idx);
+    }
+    return;
+  }
+
+  // Handle camp drag
+  if (campDragState) {
+    const dx = sc.x - campDragState.startSVG.x;
+    const dy = sc.y - campDragState.startSVG.y;
+    if (Math.sqrt(dx*dx + dy*dy) > DRAG_THRESHOLD) campDragState.moved = true;
+    if (campDragState.moved) {
+      const data = getWaspData();
+      if (data) {
+        const t = data.towns[campDragState.townIdx];
+        const camp = t && t.camps && t.camps[campDragState.campIdx];
+        if (camp) {
+          camp.pos[0] = campDragState.startPos[0] + dx / cam.s;
+          camp.pos[1] = campDragState.startPos[1] - dy / cam.s;
+          const cb = document.getElementById('coords-badge');
+          cb.textContent = `x: ${camp.pos[0].toFixed(0)}  y: ${camp.pos[1].toFixed(0)}  (camp drag)`;
+          // Live update camp marker + link
+          updateDraggedCampPosition(campDragState.townIdx, campDragState.campIdx, camp.pos[0], camp.pos[1]);
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle defense drag
+  if (defenseDragState) {
+    const dx = sc.x - defenseDragState.startSVG.x;
+    const dy = sc.y - defenseDragState.startSVG.y;
+    if (Math.sqrt(dx*dx + dy*dy) > DRAG_THRESHOLD) defenseDragState.moved = true;
+    if (defenseDragState.moved) {
+      const data = getWaspData();
+      if (data) {
+        const t = data.towns[defenseDragState.townIdx];
+        const def = t && t.defenses && t.defenses[defenseDragState.defIdx];
+        if (def) {
+          def.pos[0] = defenseDragState.startPos[0] + dx / cam.s;
+          def.pos[1] = defenseDragState.startPos[1] - dy / cam.s;
+          updateDraggedDefensePosition(defenseDragState.townIdx, defenseDragState.defIdx, def.pos[0], def.pos[1]);
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle spawn drag
+  if (spawnDragState) {
+    const dx = sc.x - spawnDragState.startSVG.x;
+    const dy = sc.y - spawnDragState.startSVG.y;
+    if (Math.sqrt(dx*dx + dy*dy) > DRAG_THRESHOLD) spawnDragState.moved = true;
+    if (spawnDragState.moved) {
+      const data = getWaspData();
+      if (data) {
+        const s = data.spawns[spawnDragState.spawnIdx];
+        if (s) {
+          s.pos[0] = spawnDragState.startPos[0] + dx / cam.s;
+          s.pos[1] = spawnDragState.startPos[1] - dy / cam.s;
+          updateDraggedSpawnPosition(spawnDragState.spawnIdx, s.pos[0], s.pos[1], s.side);
+          const posEl = document.getElementById('insp-spawn-pos');
+          if (posEl) posEl.textContent = `pos: [${s.pos[0].toFixed(1)}, ${s.pos[1].toFixed(1)}]`;
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle airport drag
+  if (airportDragState) {
+    const dx = sc.x - airportDragState.startSVG.x;
+    const dy = sc.y - airportDragState.startSVG.y;
+    if (Math.sqrt(dx*dx + dy*dy) > DRAG_THRESHOLD) airportDragState.moved = true;
+    if (airportDragState.moved) {
+      const data = getWaspData();
+      if (data) {
+        const a = data.airports[airportDragState.airportIdx];
+        if (a) {
+          a.pos[0] = airportDragState.startPos[0] + dx / cam.s;
+          a.pos[1] = airportDragState.startPos[1] - dy / cam.s;
+          updateDraggedAirportPosition(airportDragState.airportIdx, a.pos[0], a.pos[1]);
+          const posEl = document.getElementById('insp-airport-pos');
+          if (posEl) posEl.textContent = `pos: [${a.pos[0].toFixed(1)}, ${a.pos[1].toFixed(1)}]`;
+        }
+      }
     }
     return;
   }
@@ -1478,16 +2028,99 @@ window.addEventListener('mousemove', evt => {
 });
 
 window.addEventListener('mouseup', (evt) => {
+  // Finish camp drag
+  if (campDragState) {
+    const ds = campDragState;
+    campDragState = null;
+    svg.classList.remove('panning');
+    if (ds.moved) {
+      const data = getWaspData();
+      const t = data && data.towns[ds.townIdx];
+      if (t) {
+        markEdited(t);
+        renderCamps();
+        // If this town is selected, refresh inspector camp list pos display
+        if (selectedTownIdx === ds.townIdx) renderInspector(t, ds.townIdx);
+      }
+    } else {
+      // click on camp — select it
+      selectedCampKey = { townIdx: ds.townIdx, campIdx: ds.campIdx };
+      const data = getWaspData();
+      const t = data && data.towns[ds.townIdx];
+      if (t) {
+        selectTown(t, ds.townIdx, document.querySelector(`.town-marker[data-idx="${ds.townIdx}"]`));
+      }
+      renderCamps();
+    }
+    return;
+  }
+
+  // Finish defense drag
+  if (defenseDragState) {
+    const ds = defenseDragState;
+    defenseDragState = null;
+    svg.classList.remove('panning');
+    if (ds.moved) {
+      const data = getWaspData();
+      const t = data && data.towns[ds.townIdx];
+      if (t) {
+        markEdited(t);
+        renderDefenses();
+        if (selectedTownIdx === ds.townIdx) renderInspector(t, ds.townIdx);
+      }
+    } else {
+      // click on defense — select its town
+      selectedDefenseKey = { townIdx: ds.townIdx, defIdx: ds.defIdx };
+      const data = getWaspData();
+      const t = data && data.towns[ds.townIdx];
+      if (t) {
+        selectTown(t, ds.townIdx, document.querySelector(`.town-marker[data-idx="${ds.townIdx}"]`));
+      }
+      renderDefenses();
+    }
+    return;
+  }
+
+  // Finish spawn drag
+  if (spawnDragState) {
+    const ds = spawnDragState;
+    spawnDragState = null;
+    svg.classList.remove('panning');
+    if (ds.moved) {
+      renderSpawns();
+    } else {
+      // click on spawn — open spawn inspector
+      selectSpawn(ds.spawnIdx);
+      renderSpawns();
+    }
+    return;
+  }
+
+  // Finish airport drag
+  if (airportDragState) {
+    const ds = airportDragState;
+    airportDragState = null;
+    svg.classList.remove('panning');
+    if (ds.moved) {
+      renderAirports();
+    } else {
+      selectAirport(ds.airportIdx);
+      renderAirports();
+    }
+    return;
+  }
+
   // Finish drag
   if (dragState) {
     const ds = dragState;
     dragState = null;
     svg.classList.remove('panning');
     if (ds.moved) {
-      // Full re-render to update rings/labels, keep selection
+      // Full re-render to update rings/labels/camps, keep selection
       renderTowns();
       renderLabels();
       renderRings();
+      renderCamps(); // camps move with town visually (links update)
       // Re-select
       document.querySelectorAll('.town-marker').forEach(grp => {
         if (parseInt(grp.getAttribute('data-idx')) === ds.idx) {
@@ -1547,6 +2180,86 @@ function updateDraggedTownPosition(t, idx) {
   if (labels[idx]) {
     labels[idx].setAttribute('x', wx);
     labels[idx].setAttribute('y', svgY - r - 60);
+  }
+}
+
+// Live-update a camp marker + connector line during drag
+function updateDraggedCampPosition(townIdx, campIdx, cx, cy) {
+  const csvgY = SIZE - cy;
+  const data = getWaspData();
+  const t = data && data.towns[townIdx];
+
+  // Update camp circle
+  const grp = document.querySelector(`.camp-marker[data-town-idx="${townIdx}"][data-camp-idx="${campIdx}"]`);
+  if (grp) {
+    const circle = grp.querySelector('circle');
+    if (circle) { circle.setAttribute('cx', cx); circle.setAttribute('cy', csvgY); }
+  }
+
+  // Update connector line — find by counting (camp links are in order: towns × camps)
+  if (t) {
+    const gLinks = document.getElementById('g-camp-links');
+    // Count link index: sum of all camp counts for towns before this one, plus campIdx
+    let linkIdx = campIdx;
+    for (let i = 0; i < townIdx; i++) {
+      linkIdx += (data.towns[i].camps || []).length;
+    }
+    const line = gLinks.children[linkIdx];
+    if (line) {
+      line.setAttribute('x1', cx);
+      line.setAttribute('y1', csvgY);
+      // x2/y2 stays at town pos
+    }
+  }
+}
+
+// Live-update a defense square during drag
+function updateDraggedDefensePosition(townIdx, defIdx, dx, dy) {
+  const dsvgY = SIZE - dy;
+  const DEF_R = 90;
+  const grp = document.querySelector(`.defense-marker[data-town-idx="${townIdx}"][data-def-idx="${defIdx}"]`);
+  if (!grp) return;
+  const rect = grp.querySelector('rect');
+  if (rect) {
+    rect.setAttribute('x', dx - DEF_R);
+    rect.setAttribute('y', dsvgY - DEF_R);
+  }
+  const lbl = grp.querySelector('text');
+  if (lbl) {
+    lbl.setAttribute('x', dx);
+    lbl.setAttribute('y', dsvgY - DEF_R - 50);
+  }
+}
+
+// Live-update a spawn diamond during drag
+function updateDraggedSpawnPosition(spawnIdx, wx, wy, side) {
+  const svgY = SIZE - wy;
+  const r = 140;
+  const col = spawnColor(side);
+  const grp = document.querySelector(`.spawn-marker[data-spawn-idx="${spawnIdx}"]`);
+  if (!grp) return;
+  const poly = grp.querySelector('polygon');
+  if (poly) {
+    const pts = `${wx},${svgY - r} ${wx + r},${svgY} ${wx},${svgY + r} ${wx - r},${svgY}`;
+    poly.setAttribute('points', pts);
+  }
+}
+
+// Live-update an airport triangle during drag
+function updateDraggedAirportPosition(airportIdx, wx, wy) {
+  const svgY = SIZE - wy;
+  const r = 200;
+  const grp = document.querySelector(`.airport-marker[data-airport-idx="${airportIdx}"]`);
+  if (!grp) return;
+  const poly = grp.querySelector('polygon');
+  if (poly) {
+    const pts = `${wx},${svgY - r} ${wx + r},${svgY + r * 0.6} ${wx - r},${svgY + r * 0.6}`;
+    poly.setAttribute('points', pts);
+  }
+  const cross = grp.querySelector('line');
+  if (cross) {
+    cross.setAttribute('x1', wx); cross.setAttribute('y1', svgY - r * 0.3);
+    cross.setAttribute('x2', wx); cross.setAttribute('y2', svgY + r * 0.5);
   }
 }
 
@@ -1658,10 +2371,12 @@ document.getElementById('map-select').addEventListener('change', evt => {
 // ============================================================
 // LAYER TOGGLE BINDINGS
 // ============================================================
-['show-towns', 'show-rings', 'show-spawns', 'show-airports', 'show-labels'].forEach(id => {
+['show-towns', 'show-rings', 'show-camps', 'show-defenses', 'show-spawns', 'show-airports', 'show-labels'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
     if (!mapsData) return;
     renderRings();
+    renderCamps();
+    renderDefenses();
     renderAirports();
     renderSpawns();
     renderTowns();

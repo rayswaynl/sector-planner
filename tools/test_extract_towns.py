@@ -16,13 +16,45 @@ from extract_towns import extract_towns, _undouble, _parse_init_args, _parse_pre
 # Minimal SQM fixture helpers
 # ---------------------------------------------------------------------------
 
-def _make_depot_group(pos_x, pos_alt, pos_y, init_str):
-    """Build a minimal group block containing one LocationLogicDepot."""
+def _make_depot_group(pos_x, pos_alt, pos_y, init_str,
+                      camps=None, defenses=None):
+    """Build a minimal group block containing one LocationLogicDepot and
+    optional sibling LocationLogicCamp + defense Logic entities."""
+    sibling_items = ""
+    item_idx = 1
+    for camp_pos in (camps or []):
+        cx, cy = camp_pos
+        sibling_items += f"""
+                class Item{item_idx} {{
+                    position[]={{{cx},5,{cy}}};
+                    id={100 + item_idx};
+                    side="LOGIC";
+                    vehicle="LocationLogicCamp";
+                    skill=0.60000002;
+                    init="this enableSimulation false;";
+                    synchronizations[]={{4}};
+                }};"""
+        item_idx += 1
+    for def_info in (defenses or []):
+        dx, dy = def_info["pos"]
+        kind_str = ",".join(f"'{k}'" for k in def_info["kind"])
+        sibling_items += f"""
+                class Item{item_idx} {{
+                    position[]={{{dx},10,{dy}}};
+                    id={200 + item_idx};
+                    side="LOGIC";
+                    vehicle="Logic";
+                    skill=0.60000002;
+                    init="this setVariable ['wfbe_defense_kind', [{kind_str}]];";
+                    synchronizations[]={{4}};
+                }};"""
+        item_idx += 1
+    total_items = item_idx  # items= count
     return f"""
         class ItemN {{
             side="LOGIC";
             class Vehicles {{
-                items=1;
+                items={total_items};
                 class Item0 {{
                     position[]={{{pos_x},{pos_alt},{pos_y}}};
                     azimut=160;
@@ -35,7 +67,7 @@ def _make_depot_group(pos_x, pos_alt, pos_y, init_str):
                     text="TestTown";
                     init="{init_str}";
                     synchronizations[]={{5,6}};
-                }};
+                }};{sibling_items}
             }};
         }};
 """
@@ -254,6 +286,93 @@ class TestExtractTownsPresets(unittest.TestCase):
         sqm = _make_depot_group(0, 0, 0, 'nullReturn = [this,""A"",""++"",1,2,3,""T""] execVM ""x"";')
         result = extract_towns(sqm)
         self.assertEqual(result["presets"], {})
+
+
+class TestExtractTownsCampsAndDefenses(unittest.TestCase):
+    """Test extraction of camps and defense logics from a depot group."""
+
+    _DEPOT_INIT = (
+        r'nullReturn = [this,""Kamenka"",""++"",10,45,300,'
+        r'[""SmallTown1"",""SmallTown2""]] execVM ""Common\Init\Init_Town.sqf"";'
+        r'this enableSimulation false;'
+    )
+
+    def _make_sqm(self, camps=None, defenses=None):
+        return _make_depot_group(
+            1827.0, 8.1, 2260.6, self._DEPOT_INIT,
+            camps=camps, defenses=defenses
+        )
+
+    def test_no_camps_or_defenses(self):
+        result = extract_towns(self._make_sqm())
+        town = result["towns"][0]
+        self.assertEqual(town["camps"], [])
+        self.assertEqual(town["defenses"], [])
+
+    def test_two_camps(self):
+        result = extract_towns(self._make_sqm(
+            camps=[(1742.0, 2357.0), (1994.0, 2270.0)]
+        ))
+        town = result["towns"][0]
+        self.assertEqual(len(town["camps"]), 2)
+        self.assertAlmostEqual(town["camps"][0]["pos"][0], 1742.0, places=0)
+        self.assertAlmostEqual(town["camps"][0]["pos"][1], 2357.0, places=0)
+        self.assertAlmostEqual(town["camps"][1]["pos"][0], 1994.0, places=0)
+
+    def test_defense_mgnest_kind(self):
+        result = extract_towns(self._make_sqm(
+            defenses=[{"pos": (1770.0, 2372.0), "kind": ["MGNest"]}]
+        ))
+        town = result["towns"][0]
+        self.assertEqual(len(town["defenses"]), 1)
+        self.assertAlmostEqual(town["defenses"][0]["pos"][0], 1770.0, places=0)
+        self.assertEqual(town["defenses"][0]["kind"], ["MGNest"])
+
+    def test_multiple_defense_kinds(self):
+        result = extract_towns(self._make_sqm(
+            defenses=[
+                {"pos": (100.0, 200.0), "kind": ["AA", "AT"]},
+                {"pos": (300.0, 400.0), "kind": ["MG"]},
+            ]
+        ))
+        town = result["towns"][0]
+        self.assertEqual(len(town["defenses"]), 2)
+        self.assertIn("AA", town["defenses"][0]["kind"])
+        self.assertIn("AT", town["defenses"][0]["kind"])
+        self.assertEqual(town["defenses"][1]["kind"], ["MG"])
+
+    def test_camps_and_defenses_together(self):
+        result = extract_towns(self._make_sqm(
+            camps=[(1742.0, 2357.0), (1994.0, 2270.0)],
+            defenses=[{"pos": (1770.0, 2372.0), "kind": ["MGNest"]}],
+        ))
+        town = result["towns"][0]
+        self.assertEqual(len(town["camps"]), 2)
+        self.assertEqual(len(town["defenses"]), 1)
+        # Depot's own position must not be included in camps/defenses
+        self.assertAlmostEqual(town["pos"][0], 1827.0, places=0)
+
+    def test_kamenka_real_counts(self):
+        """Sanity check via the real Chernarus mission if available."""
+        import os
+        sqm_path = (
+            r'C:\Users\Steff\a2waspwarfare\Missions'
+            r'\[55-2hc]warfarev2_073v48co.chernarus\mission.sqm'
+        )
+        if not os.path.exists(sqm_path):
+            self.skipTest("Real mission.sqm not available")
+        text = open(sqm_path, encoding='utf-8', errors='replace').read()
+        result = extract_towns(text)
+        kamenka = next((t for t in result["towns"] if t["name"] == "Kamenka"), None)
+        self.assertIsNotNone(kamenka)
+        # Kamenka has exactly 2 camps per mission.sqm inspection
+        self.assertEqual(len(kamenka["camps"]), 2)
+        # At least 1 defense
+        self.assertGreater(len(kamenka["defenses"]), 0)
+        # All defenses should have kind list
+        for d in kamenka["defenses"]:
+            self.assertIsInstance(d["kind"], list)
+            self.assertTrue(len(d["kind"]) > 0)
 
 
 class TestExtractTownsCombined(unittest.TestCase):
