@@ -10,7 +10,8 @@ Output schema:
     "<map>": {
       "map":     str,
       "size":    int,          # 15360 (chernarus) or 12800 (takistan)
-      "towns":   [{name, pos:[x,y], dubbing, startSV, maxSV, value, type:[...]}],
+      "towns":   [{name, pos:[x,y], dubbing, startSV, maxSV, value, type:[...],
+                   camps:[{pos:[x,y]}], defenses:[{pos:[x,y], kind:[...]}]}],
       "spawns":  [{pos:[x,y], side, spawn_pos}],   # side/spawn_pos may be null
       "airports":[{pos:[x,y]}],
       "presets": {"XSmall":[...], "Small":[...], ...}
@@ -219,6 +220,65 @@ def _parse_presets(wf_logic_init: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Camp / defense extraction from a Vehicles block
+# ---------------------------------------------------------------------------
+
+_DEFENSE_KIND_RE = re.compile(
+    r"wfbe_defense_kind['\"]?\s*,\s*\[([^\]]+)\]"
+)
+
+
+def _extract_camps_and_defenses(vehicles_body: str) -> tuple[list, list]:
+    """
+    Given the body text of a 'class Vehicles { ... }' block (already found to
+    contain a LocationLogicDepot), collect all sibling:
+      - LocationLogicCamp  → camps: [{pos:[x,y]}]
+      - Logic with wfbe_defense_kind annotation → defenses: [{pos:[x,y], kind:[...]}]
+
+    Returns (camps, defenses).
+    """
+    camps: list[dict] = []
+    defenses: list[dict] = []
+
+    # Find all ItemN sub-blocks within this Vehicles body
+    item_re = re.compile(r'class\s+Item\d+\s*\{')
+    for item_m in item_re.finditer(vehicles_body):
+        brace_idx = item_m.end() - 1  # index of '{'
+        try:
+            body_s, body_e = _find_class_block(vehicles_body, brace_idx)
+        except ValueError:
+            continue
+        item_body = vehicles_body[body_s:body_e]
+
+        # Determine vehicle type for this item
+        veh_m = re.search(r'vehicle\s*=\s*"([^"]+)"', item_body)
+        if not veh_m:
+            continue
+        vtype = veh_m.group(1)
+
+        pos_xy = _parse_pos(item_body)
+        if pos_xy is None:
+            continue
+
+        if vtype == 'LocationLogicCamp':
+            camps.append({'pos': pos_xy})
+
+        elif vtype == 'Logic':
+            # Check for defense annotation
+            init_m = re.search(r'init\s*=\s*"([^"]*(?:""[^"]*)*)"', item_body)
+            if not init_m:
+                continue
+            init_raw = _undouble(init_m.group(1))
+            kind_m = _DEFENSE_KIND_RE.search(init_raw)
+            if kind_m:
+                kinds = re.findall(r"'([^']+)'|\"([^\"]+)\"", kind_m.group(1))
+                kind_list = [k for pair in kinds for k in pair if k]
+                defenses.append({'pos': pos_xy, 'kind': kind_list})
+
+    return camps, defenses
+
+
+# ---------------------------------------------------------------------------
 # Main extraction
 # ---------------------------------------------------------------------------
 
@@ -262,6 +322,9 @@ def extract_towns(sqm_text: str) -> dict:
     # WF_Logic is a Logic vehicle with text="WF_Logic"
     wf_logic_re = re.compile(r'text\s*=\s*"WF_Logic"')
 
+    # Pattern to find "class Vehicles {" — used to get the enclosing Vehicles block
+    vehicles_class_re = re.compile(r'class\s+Vehicles\s*\{')
+
     for m in vehicle_re.finditer(sqm_text):
         vtype = m.group(1)
         pos_in_text = m.start()
@@ -304,6 +367,26 @@ def extract_towns(sqm_text: str) -> dict:
             if parsed is None:
                 continue
             parsed["pos"] = pos_xy
+
+            # Find the enclosing Vehicles block to extract sibling camps + defenses.
+            # The Item0 block starts at brace_idx in sqm_text; walk back to Vehicles {.
+            preceding_to_item0 = sqm_text[:brace_idx]
+            veh_matches = list(vehicles_class_re.finditer(preceding_to_item0))
+            if veh_matches:
+                veh_brace_idx = veh_matches[-1].end() - 1
+                try:
+                    veh_bs, veh_be = _find_class_block(sqm_text, veh_brace_idx)
+                    vehicles_body = sqm_text[veh_bs:veh_be]
+                    camps, defenses = _extract_camps_and_defenses(vehicles_body)
+                    parsed["camps"] = camps
+                    parsed["defenses"] = defenses
+                except ValueError:
+                    parsed["camps"] = []
+                    parsed["defenses"] = []
+            else:
+                parsed["camps"] = []
+                parsed["defenses"] = []
+
             towns.append(parsed)
 
         elif vtype == "LocationLogicStart":
@@ -393,12 +476,16 @@ def main(argv=None):
 
 
 def _print_summary(map_name: str, data: dict) -> None:
+    total_camps = sum(len(t.get("camps", [])) for t in data["towns"])
+    total_defs = sum(len(t.get("defenses", [])) for t in data["towns"])
     print(f"  towns={len(data['towns'])}  spawns={len(data['spawns'])}  "
-          f"airports={len(data['airports'])}  presets={list(data['presets'].keys())}")
+          f"airports={len(data['airports'])}  presets={list(data['presets'].keys())}  "
+          f"camps={total_camps}  defenses={total_defs}")
     # Sanity: show Kamenka if present
     for t in data["towns"]:
         if t["name"].lower() == "kamenka":
-            print(f"  Kamenka pos={t['pos']}  value={t['value']}")
+            print(f"  Kamenka pos={t['pos']}  value={t['value']}  "
+                  f"camps={t.get('camps',[])}  defenses={len(t.get('defenses',[]))}")
             break
 
 
