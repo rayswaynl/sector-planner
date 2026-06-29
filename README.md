@@ -10,7 +10,8 @@ Edit the whole WASP campaign on a map. Every capturable **town** is a draggable 
 
 - **All 7 stock Arma 2 / expansion maps preloaded** — Chernarus (15360 m), Takistan (12800 m), Zargabad (8192 m), Utes (5120 m), Shapur, Proving Grounds, Desert — each with a **topographic map image** (alignment-verified; toggle + opacity) and its real **named locations** from `CfgWorlds` as reference markers.
 - **Town editing on every map**: drag to reposition; click to retune **supply** (`startSV`/`maxSV`), **income value**, **AI town-type**; 600 m capture rings.
-- **Campaign designer** — add/delete towns, **promote a CfgWorlds location → capturable town**, and design a campaign **from scratch on any map** (Zargabad, Utes…), exporting paste-ready `Init_Town` blocks.
+- **Campaign designer** — add/delete towns, **promote a CfgWorlds location → capturable town**, and design a campaign **from scratch on any map** (Zargabad, Utes…).
+- **Generate a playable mission** — pick a WEST + EAST faction and hit Generate to download a **complete, runnable WASP `mission.sqm`** for the current map (towns + camps + spawns + airfields + WF_Logic + player slots + side plumbing, all assembled with valid IDs/syncs/counts) plus the folder name to drop it in. Design on *any* of the 7 maps → play it.
 - **Tactical layer** — editable **camps**, **defenses** (MGNest etc.), **spawn points** (per-side), and **airfields**.
 - **Strategy overlays** — paint town **ownership** (side totals), **income** per town (`value × COEF`), an approximate **frontline** with contested/distance-to-front shading, and **capture-time** estimates.
 - **Size presets** — toggle which towns each `Towns_Removed*` preset (XSmall…Huge) includes.
