@@ -92,6 +92,49 @@ console.log('auto-towns:');
   assert(cap && cap.type.includes('LargeTown1'), 'capital promoted to LargeTown tier');
 }
 
+// ---------- 4b. GUER emission, airfield towns, town value ----------
+console.log('GUER + airfield + town value:');
+{
+  const data = {
+    towns: [
+      { name: 'Alpha', dubbing: '+', startSV: 20, maxSV: 80, value: 800,
+        type: ['LargeTown1'], pos: [1000, 1000], camps: [], defenses: [] },
+      { name: 'Alpha AF', airfield: true, startSV: 10, maxSV: 40, value: 400,
+        pos: [2000, 2000], camps: [{ pos: [2100, 2050] }], defenses: [] },
+    ],
+    spawns: [], airports: [], presets: {},
+  };
+  const sqm = gen.buildMissionSqm({
+    world: 'zargabad', size: maps.zargabad.size,
+    westFaction: 'US', eastFaction: 'TKA', data,
+  });
+  // town value goes into arg 6 of Init_Town.sqf (NOT a hardcoded 300)
+  assert(sqm.includes('\\"Alpha\\",\\"+\\",20,80,800,'), 'Init_Town gets startSV,maxSV,VALUE (800)');
+  // airfield town: ++ dubbing, PMCAirfield type, wfbe_is_airfield flag
+  assert(sqm.includes('\\"Alpha AF\\",\\"++\\",10,40,400,\\"PMCAirfield\\"'), 'airfield depot init (++/PMCAirfield)');
+  assert(sqm.includes('wfbe_is_airfield'), 'wfbe_is_airfield flag set');
+  // totalTowns counts only non-airfield towns
+  assert(sqm.includes('\\"totalTowns\\",1]'), 'totalTowns excludes airfield towns');
+  // GUER plumbing
+  assert(sqm.includes('vehicle="LocationLogicOwnerResistance"'), 'GUER owner logic emitted');
+  assert(sqm.includes('text="WFBE_L_GUE"'), 'GUER owner text WFBE_L_GUE');
+  assert((sqm.match(/side="GUER"/g) || []).length >= 8, 'four GUER slot groups (side=GUER on group+unit)');
+  assert(sqm.includes('vehicle="GUE_Soldier_Medic"') && sqm.includes('vehicle="GUE_Soldier_Sab"')
+    && sqm.includes('vehicle="GUE_Soldier_Sniper"'), 'GUER roster classnames');
+  assert(sqm.includes('this setVariable [""task"",""medic""]'), 'GUER medic task init');
+  // GUER owner syncs to exactly 4 slots
+  const gSync = sqm.match(/vehicle="LocationLogicOwnerResistance"[\s\S]*?synchronizations\[\]=\{([^}]*)\}/);
+  assert(gSync && gSync[1].split(',').length === 4, 'GUER owner synced to 4 slots');
+  // GUER anchor scales with map size (chernarus 15462.453 * 8192/15360)
+  const gPos = sqm.match(/position\[\]=\{([\d.]+),0,([\d.]+)\};\n\t\t\t\t\tvehicle="LocationLogicOwnerResistance"/);
+  assert(gPos && Math.abs(parseFloat(gPos[1]) - 15462.453 * 8192 / 15360) < 0.5,
+    `GUER owner anchor scaled (${gPos ? gPos[1] : 'n/a'})`);
+  // structure still valid
+  const rep = gen.validateSqmStructure(sqm);
+  assert(rep.uniqueIds, 'IDs still unique with GUER + airfield');
+  assert(rep.groupsItemsDeclared === rep.groupsItemsActual, 'Groups items= still consistent');
+}
+
 // ---------- 5. CLI end-to-end ----------
 console.log('CLI end-to-end:');
 {

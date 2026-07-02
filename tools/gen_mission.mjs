@@ -191,7 +191,8 @@ function main() {
   report.addOns4Blocks.forEach((blk, bi) => {
     if (!blk.includes(args.map)) issues.push(`addOns block ${bi + 1} missing world "${args.map}"`);
   });
-  if (report.totalTowns !== data.towns.length) issues.push(`totalTowns=${report.totalTowns} but ${data.towns.length} towns`);
+  const expectedTotalTowns = data.towns.filter(t => !t.airfield).length;
+  if (report.totalTowns !== expectedTotalTowns) issues.push(`totalTowns=${report.totalTowns} but ${expectedTotalTowns} non-airfield towns`);
   if (report.depotCount !== data.towns.length) issues.push(`Depot count ${report.depotCount} != town count ${data.towns.length}`);
 
   // ---- output ----
