@@ -5555,12 +5555,16 @@ function emitTownGroup(groupIdx, town) {
   lines.push(`\t\t\t{`);
   lines.push(`\t\t\t\titems=${itemCount};`);
 
-  // Item0 = depot
+  // Item0 = depot. text= is the editor VARIABLE name: Init_Town.sqf matches
+  // (str _town) against the Towns_Removed* preset lists, so it must be a
+  // valid SQF identifier — live missions use text="ChakChak" with display
+  // name "Chak Chak". The display name (init arg 2) keeps its spaces.
+  const townVarName = String(town.name).replace(/[^A-Za-z0-9_]/g, '') || `Town${depotId}`;
   lines.push(`\t\t\t\tclass Item0`);
   lines.push(`\t\t\t\t{`);
   lines.push(`\t\t\t\t\t${fmtPos3(town.pos[0], 0, town.pos[1])};`);
   lines.push(`\t\t\t\t\tvehicle="LocationLogicDepot";`);
-  lines.push(`\t\t\t\t\ttext="${sqmEscape(town.name)}";`);
+  lines.push(`\t\t\t\t\ttext="${sqmEscape(townVarName)}";`);
   lines.push(`\t\t\t\t\tinit="${depotInitRaw}";`);
   lines.push(`\t\t\t\t\tid=${depotId};`);
   lines.push(`\t\t\t\t\tsynchronizations[]={${allChildIds.join(',')}};`);

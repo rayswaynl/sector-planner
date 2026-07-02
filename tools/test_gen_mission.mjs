@@ -135,6 +135,23 @@ console.log('GUER + airfield + town value:');
   assert(rep.groupsItemsDeclared === rep.groupsItemsActual, 'Groups items= still consistent');
 }
 
+// ---------- 4c. depot text= is a sanitized SQF identifier ----------
+console.log('depot text sanitization:');
+{
+  const data = {
+    towns: [{ name: 'Hazar Bagh', dubbing: '+', startSV: 10, maxSV: 40, value: 400,
+      type: ['SmallTown1'], pos: [3943, 5957], camps: [], defenses: [] }],
+    spawns: [], airports: [], presets: { XSmall: ['HazarBagh'] },
+  };
+  const sqm = gen.buildMissionSqm({
+    world: 'zargabad', size: maps.zargabad.size,
+    westFaction: 'US', eastFaction: 'TKA', data,
+  });
+  assert(sqm.includes('text="HazarBagh"'), 'text= stripped to valid identifier');
+  assert(sqm.includes('\\"Hazar Bagh\\",\\"+\\"'), 'display name keeps the space');
+  assert(sqm.includes('Towns_RemovedXSmall\\",[\\"HazarBagh\\"]'), 'preset entry matches sanitized name');
+}
+
 // ---------- 5. CLI end-to-end ----------
 console.log('CLI end-to-end:');
 {
