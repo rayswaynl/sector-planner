@@ -496,6 +496,408 @@
     border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;
     color:var(--orange);word-break:break-all;display:none
   }
+
+  /* ================================================================
+     VISUAL OVERHAUL 2026-07-02 — "Cold-War operations console"
+     Brief items 1-11 + Sector Planner identity moment
+     ================================================================ */
+
+  /* ---- 1. Brandbar: olive top rule, Oswald title tracking, status LED ---- */
+  .brandbar{
+    border-top:1px solid var(--olive);
+  }
+  .brandbar .word .t1{
+    letter-spacing:3px;text-transform:uppercase;
+  }
+  /* Status LED */
+  .status-led{
+    width:8px;height:8px;border-radius:50%;flex:0 0 auto;
+    background:var(--olive);box-shadow:0 0 4px rgba(92,101,54,.7);
+    cursor:default;transition:background .3s,box-shadow .3s
+  }
+  .status-led.dirty{
+    background:var(--orange);
+    animation:led-pulse 1.4s ease-in-out infinite;
+    box-shadow:0 0 6px rgba(217,118,60,.8)
+  }
+  .status-led.error{
+    background:var(--danger);box-shadow:0 0 5px rgba(192,57,43,.8);
+    animation:none
+  }
+  @keyframes led-pulse{
+    0%,100%{opacity:1}50%{opacity:.4}
+  }
+  /* Brandbar ? help button */
+  .brandbar-help-btn{
+    width:24px;height:24px;border:1px solid var(--line);border-radius:50%;
+    background:transparent;color:#8b939c;font-size:11px;font-weight:700;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    font-family:Inter,sans-serif;flex:0 0 auto;line-height:1;padding:0
+  }
+  .brandbar-help-btn:hover{border-color:var(--orange);color:var(--orange)}
+  .brandbar-help-btn:focus{outline:2px solid var(--orange);outline-offset:2px}
+
+  /* ---- 2. Stage framing: corner brackets + grain/scanline overlay ---- */
+  /* Corner bracket overlay — absolute positioned over the stage, pointer-events none */
+  .stage-frame-brackets{
+    position:absolute;inset:0;pointer-events:none;z-index:2
+  }
+  /* CSS-only bracket using box-shadow trick at corners */
+  .stage-frame-brackets::before,
+  .stage-frame-brackets::after{
+    content:'';position:absolute;width:18px;height:18px;
+    border:2px solid var(--line);pointer-events:none
+  }
+  .stage-frame-brackets::before{top:0;left:0;border-right:none;border-bottom:none}
+  .stage-frame-brackets::after{bottom:0;right:0;border-left:none;border-top:none}
+  /* Additional brackets via a pseudo on a sibling span */
+  .stage-bracket-tr,.stage-bracket-bl{
+    position:absolute;width:18px;height:18px;
+    border:2px solid var(--line);pointer-events:none;z-index:2
+  }
+  .stage-bracket-tr{top:0;right:0;border-left:none;border-bottom:none}
+  .stage-bracket-bl{bottom:0;left:0;border-right:none;border-top:none}
+
+  /* Grain + scanline overlay on stage */
+  .stage-fx-overlay{
+    position:absolute;inset:0;pointer-events:none;z-index:1;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,.018) 3px,
+        rgba(0,0,0,.018) 4px
+      ),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    opacity:1
+  }
+  @media (prefers-reduced-motion:reduce){
+    .stage-fx-overlay{display:none}
+  }
+
+  /* Topographic contour underlay — WAR-ROOM MAP TABLE identity moment.
+     This sits BEHIND the SVG canvas (z-index:-1 relative to stage).
+     It is a pure CSS pattern so it adds zero network requests. */
+  .stage-topo-underlay{
+    position:absolute;inset:0;pointer-events:none;z-index:0;
+    /* Layered concentric repeating-linear gradients at slight angles to mimic topo lines */
+    background:
+      repeating-linear-gradient(
+        17deg,
+        transparent 0px,
+        transparent 22px,
+        rgba(92,101,54,.045) 22px,
+        rgba(92,101,54,.045) 23px,
+        transparent 23px,
+        transparent 45px,
+        rgba(92,101,54,.025) 45px,
+        rgba(92,101,54,.025) 46px
+      ),
+      repeating-linear-gradient(
+        73deg,
+        transparent 0px,
+        transparent 34px,
+        rgba(92,101,54,.03) 34px,
+        rgba(92,101,54,.03) 35px,
+        transparent 35px,
+        transparent 68px,
+        rgba(92,101,54,.015) 68px,
+        rgba(92,101,54,.015) 69px
+      );
+    opacity:.8
+  }
+
+  /* ---- 3. Panel headers: ordinal prefix + olive left accent bar ---- */
+  .panel header{
+    border-left:3px solid var(--olive);
+    padding-left:11px
+  }
+  .panel header h2{
+    font-family:Oswald,sans-serif;font-size:13px;
+    text-transform:uppercase;letter-spacing:1.5px;color:var(--bone)
+  }
+  /* Ordinal badge in header */
+  .hdr-ordinal{
+    font-family:'JetBrains Mono',monospace;font-size:9px;
+    color:var(--olive);letter-spacing:.5px;margin-bottom:2px;display:block
+  }
+  .io-panel header{border-left:3px solid var(--olive);padding-left:11px}
+  .io-panel header h2{
+    font-family:Oswald,sans-serif;font-size:13px;
+    text-transform:uppercase;letter-spacing:1.5px;color:var(--bone)
+  }
+  #preset-panel-wrap header{border-left:3px solid var(--olive);padding-left:11px}
+  #preset-panel-wrap header h2{
+    font-family:Oswald,sans-serif;font-size:13px;
+    text-transform:uppercase;letter-spacing:1.5px;color:var(--bone)
+  }
+
+  /* ---- 4. Buttons: press scale, 5px radius, disabled state ---- */
+  .export-btn,.io-btn,.add-town-btn,.reset-btn,.delete-town-btn,
+  .paint-mode-btn,.gen-btn,.sim-run-btn,.preset-btn,.export-btn{
+    border-radius:5px;
+    transition:transform 120ms ease,border-color .15s,color .15s,background .15s
+  }
+  .export-btn:active:not(:disabled),.io-btn:active:not(:disabled),
+  .add-town-btn:active,.reset-btn:active:not(:disabled),
+  .paint-mode-btn:active,.gen-btn:active:not(:disabled),
+  .sim-run-btn:active:not(:disabled),.preset-btn:active{
+    transform:scale(.98)
+  }
+  .export-btn:disabled,.io-btn:disabled,.gen-btn:disabled,.sim-run-btn:disabled{
+    opacity:.4;cursor:not-allowed
+  }
+  /* Map overlay buttons */
+  .map-overlay button{
+    border-radius:5px;
+    transition:transform 120ms ease,border-color .15s
+  }
+  .map-overlay button:active{transform:scale(.95)}
+
+  /* ---- 5. Chips/badges: JetBrains Mono 10px pill ---- */
+  .brandbar .chip{
+    font-family:'JetBrains Mono',monospace;font-size:10px;
+    border-radius:10px;letter-spacing:.3px
+  }
+  .type-chip{
+    font-family:'JetBrains Mono',monospace;font-size:10px;
+    border-radius:10px;letter-spacing:.3px
+  }
+
+  /* ---- 6. Empty state: military flavor ---- */
+  .inspector-empty{
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:#5a6470;padding:16px 0 8px;line-height:1.7;
+    text-align:left
+  }
+  .empty-state-hint{
+    font-size:10px;color:#39414b;margin-top:8px;
+    font-family:'JetBrains Mono',monospace;line-height:1.6
+  }
+
+  /* ---- 7. Load orchestration: staggered reveal ---- */
+  @keyframes panel-reveal{
+    from{opacity:0;transform:translateY(4px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  .brandbar{animation:panel-reveal 250ms ease both}
+  #panel-left{animation:panel-reveal 300ms ease 60ms both}
+  .stage{animation:panel-reveal 320ms ease 80ms both}
+  #panel-right{animation:panel-reveal 340ms ease 120ms both}
+  #io-panel{animation:panel-reveal 360ms ease 150ms both}
+  @media(prefers-reduced-motion:reduce){
+    .brandbar,#panel-left,.stage,#panel-right,#io-panel{
+      animation:none
+    }
+  }
+
+  /* ---- 8. Micro-interactions ---- */
+  /* Hover lift on toggle-row items */
+  .toggle-row{
+    border-radius:4px;
+    transition:background .1s
+  }
+  .toggle-row:hover{background:rgba(255,255,255,.03)}
+  /* Legend items: subtle hover */
+  .legend-item{
+    border-radius:3px;padding:2px 4px;margin:3px 0;
+    transition:background .1s
+  }
+  .legend-item:hover{background:rgba(255,255,255,.04)}
+  /* Drag ghost: already handled by browser drag API; drop-target highlight */
+  .town-marker.drag-over circle.body{fill:var(--orange);stroke:var(--chalk);stroke-width:3}
+
+  /* ---- Toast notifications ---- */
+  #toast-container{
+    position:fixed;bottom:20px;right:20px;z-index:9999;
+    display:flex;flex-direction:column;gap:8px;pointer-events:none
+  }
+  .toast{
+    background:var(--steel);border-left:3px solid var(--olive);
+    border:1px solid var(--line);border-left:3px solid var(--olive);
+    border-radius:5px;padding:8px 14px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--bone);
+    display:flex;align-items:center;gap:8px;pointer-events:none;
+    box-shadow:0 4px 16px rgba(0,0,0,.5);
+    animation:toast-in 200ms ease both
+  }
+  .toast.warn{border-left-color:var(--orange);color:var(--orange)}
+  .toast.err{border-left-color:var(--danger);color:#e07060}
+  @keyframes toast-in{
+    from{opacity:0;transform:translateX(12px)}
+    to{opacity:1;transform:translateX(0)}
+  }
+  @keyframes toast-out{
+    from{opacity:1;transform:translateX(0)}
+    to{opacity:0;transform:translateX(12px)}
+  }
+  .toast.out{animation:toast-out 200ms ease forwards}
+  @media(prefers-reduced-motion:reduce){
+    .toast{animation:none}.toast.out{opacity:0}
+  }
+
+  /* ---- 9. Help overlay modal ---- */
+  #help-overlay{
+    position:fixed;inset:0;z-index:10000;
+    background:rgba(14,17,20,.88);
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;
+    transition:opacity 200ms ease
+  }
+  #help-overlay.open{opacity:1;pointer-events:all}
+  @media(prefers-reduced-motion:reduce){
+    #help-overlay{transition:none}
+  }
+  .help-modal{
+    background:var(--steel);border:1px solid var(--line);
+    border-top:3px solid var(--olive);
+    border-radius:7px;padding:24px 28px;max-width:500px;width:90%;
+    box-shadow:0 8px 40px rgba(0,0,0,.7);
+    max-height:85vh;overflow-y:auto
+  }
+  .help-modal h2{
+    font-family:Oswald,sans-serif;font-size:16px;
+    text-transform:uppercase;letter-spacing:2px;
+    color:var(--bone);margin-bottom:16px;
+    display:flex;align-items:center;gap:10px
+  }
+  .help-modal h2::before{
+    content:'01 / ';font-size:10px;color:var(--olive);
+    font-family:'JetBrains Mono',monospace;letter-spacing:.5px
+  }
+  .help-section{margin-bottom:16px}
+  .help-section h3{
+    font-family:Oswald,sans-serif;font-size:11px;
+    text-transform:uppercase;letter-spacing:1.5px;
+    color:var(--olive);margin-bottom:8px
+  }
+  .help-kbrow{
+    display:flex;align-items:center;gap:10px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:#9aa3ad;padding:3px 0;border-bottom:1px solid rgba(57,65,75,.4)
+  }
+  .help-kbrow:last-child{border-bottom:none}
+  .help-kbrow .kbdesc{flex:1}
+  .help-kbd{
+    background:var(--steel2);border:1px solid var(--line);
+    border-radius:3px;padding:1px 6px;
+    font-size:10px;color:var(--chalk);white-space:nowrap
+  }
+  .help-close{
+    display:flex;align-items:center;justify-content:center;
+    width:100%;margin-top:20px;
+    background:transparent;border:1px solid var(--line);
+    border-radius:5px;padding:8px 16px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:#8b939c;
+    transition:border-color .15s,color .15s
+  }
+  .help-close:hover{border-color:var(--orange);color:var(--orange)}
+  .help-close:focus{outline:2px solid var(--orange);outline-offset:2px}
+
+  /* ---- 10. Scrollbars: consistent 10px ---- */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--steel2);border-radius:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  /* Focus rings: orange */
+  :focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+  button:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+  /* Inputs consistent border on focus */
+  .insp-input:focus,.io-textarea:focus,.gen-select:focus,
+  .insp-side-select:focus{border-color:var(--orange)}
+
+  /* ---- 11. Footer strip ---- */
+  .suite-footer{
+    padding:6px 14px;border-top:1px solid var(--line);
+    background:var(--gunmetal);flex:0 0 auto;
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap
+  }
+  .suite-footer .ver-chip{
+    font-family:'JetBrains Mono',monospace;font-size:9px;
+    color:#5a6470;border:1px solid #2a2f36;border-radius:10px;padding:2px 7px
+  }
+  .suite-footer .suite-link{
+    font-family:'JetBrains Mono',monospace;font-size:9px;
+    color:#5a6470;text-decoration:none;margin-left:auto;white-space:nowrap
+  }
+  .suite-footer .suite-link:hover{color:var(--orange)}
+  .suite-footer .suite-link:focus{outline:2px solid var(--orange);outline-offset:2px}
+
+  /* ---- Campaign Sim: field-radio deck identity moment ---- */
+  /* Restyle the sim playback controls as a chunky field-radio deck */
+  .sim-playback{
+    background:rgba(14,17,20,.6);
+    border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;margin-top:10px
+  }
+  .sim-playback-row{
+    display:flex;align-items:center;gap:8px;margin-bottom:8px
+  }
+  /* Chunky mono playback buttons */
+  .sim-play-btn{
+    width:32px;height:32px;
+    border:2px solid var(--line);border-radius:3px;
+    background:var(--gunmetal);color:var(--bone);
+    font-size:13px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.4);
+    transition:background .1s,border-color .1s,transform 80ms ease
+  }
+  .sim-play-btn:hover{border-color:var(--orange);color:var(--orange)}
+  .sim-play-btn:active{transform:translateY(1px);box-shadow:inset 0 0 0 rgba(0,0,0,.4)}
+  .sim-play-btn:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+  /* LED state on playback badge */
+  .sim-tick-badge{
+    font-family:'JetBrains Mono',monospace;font-size:10px;
+    color:var(--olive);width:46px;text-align:right;flex:0 0 auto;
+    letter-spacing:.5px
+  }
+  /* Slider: thicker track for radio deck feel */
+  .sim-tick-slider{
+    flex:1;accent-color:var(--olive);height:6px;cursor:pointer
+  }
+  /* LED "TRANSMITTING" label above playback row */
+  .radio-deck-label{
+    font-family:'JetBrains Mono',monospace;font-size:9px;
+    text-transform:uppercase;letter-spacing:2px;
+    color:var(--olive);margin-bottom:6px;
+    display:flex;align-items:center;gap:6px
+  }
+  .radio-deck-label::before{
+    content:'';width:6px;height:6px;border-radius:50%;
+    background:var(--olive);flex:0 0 auto;
+    box-shadow:0 0 4px rgba(92,101,54,.8)
+  }
+  /* Run button: olive, chunky */
+  .sim-run-btn{
+    background:rgba(92,101,54,.3);border:2px solid var(--olive);
+    border-radius:3px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    font-weight:700;letter-spacing:2px;text-transform:uppercase;
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.3);
+    transition:background .12s,border-color .12s,transform 80ms ease
+  }
+  .sim-run-btn:hover:not(:disabled){
+    background:rgba(92,101,54,.55);border-color:#8a9a4a
+  }
+  .sim-run-btn:active:not(:disabled){transform:translateY(1px)}
+
+  /* ---- Sector Planner empty state ---- */
+  .map-empty-state{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;pointer-events:none;z-index:1
+  }
+  .map-empty-title{
+    font-family:Oswald,sans-serif;font-size:28px;
+    text-transform:uppercase;letter-spacing:6px;color:#39414b;
+    margin-bottom:8px
+  }
+  .map-empty-sub{
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:#2a2f36;letter-spacing:2px;text-transform:uppercase
+  }
 </style>
 </head>
 <body>
@@ -514,7 +916,10 @@
     <span class="t2">WASP CAMPAIGN MAP</span>
   </div>
   <div class="tool"><b>Sector &amp; Town Planner</b> · <span id="bar-map-name">Chernarus</span></div>
+  <!-- Status LED: green=loaded, orange pulse=dirty/unsaved, red=error -->
+  <span id="status-led" class="status-led" title="Data loaded" role="status" aria-live="polite" aria-label="Status: data loaded"></span>
   <div class="spacer"></div>
+  <button class="brandbar-help-btn" id="btn-help" title="Keyboard shortcuts &amp; help (?)" aria-label="Open help overlay">?</button>
   <a href="https://miksuu.com/tools" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b939c;border:1px solid var(--line);border-radius:10px;padding:3px 9px;background:#0d1014;text-decoration:none;white-space:nowrap" title="Back to Miksuu Tools hub">&#8592; All Tools</a>
   <div class="chip">coords: <b>world-space metres</b> · Y-north up</div>
 </div>
@@ -525,6 +930,7 @@
   <div class="panel" id="panel-left">
     <header>
       <div class="hdr-text">
+        <span class="hdr-ordinal">01 /</span>
         <h2>Controls</h2>
         <div class="sub">map · filters · legend</div>
       </div>
@@ -808,12 +1214,13 @@
 
           <button class="sim-run-btn" id="btn-sim-run">&#9654; Run Simulation</button>
 
-          <!-- Playback controls (shown after run) -->
+          <!-- Playback controls (shown after run) — field radio deck -->
           <div class="sim-playback" id="sim-playback">
+            <div class="radio-deck-label" aria-hidden="true">SIM PLAYBACK</div>
             <div class="sim-playback-row">
-              <button class="sim-play-btn" id="btn-sim-play" title="Play / Pause">&#9654;</button>
-              <input type="range" class="sim-tick-slider" id="sim-tick-slider" min="0" max="60" value="0">
-              <span class="sim-tick-badge" id="sim-tick-badge">t0</span>
+              <button class="sim-play-btn" id="btn-sim-play" title="Play / Pause" aria-label="Play or pause simulation">&#9654;</button>
+              <input type="range" class="sim-tick-slider" id="sim-tick-slider" min="0" max="60" value="0" aria-label="Simulation tick position">
+              <span class="sim-tick-badge" id="sim-tick-badge" aria-live="polite">t0</span>
             </div>
             <button class="sim-reset-btn" id="btn-sim-reset">
               <span style="font-size:11px">&#8635;</span> Restore real ownership
@@ -865,8 +1272,11 @@
   <!-- ====== LEFT-BOTTOM: Preset editor (hidden for non-WASP maps) ====== -->
   <div class="panel" id="preset-panel-wrap" style="border-top:1px solid var(--line);grid-column:1;display:none;flex-direction:column;max-height:280px" role="region" aria-label="Size presets">
     <header>
-      <h2>Size Presets</h2>
-      <div class="sub" id="preset-sub">select a preset to edit membership</div>
+      <div class="hdr-text">
+        <span class="hdr-ordinal">04 /</span>
+        <h2>Size Presets</h2>
+        <div class="sub" id="preset-sub">select a preset to edit membership</div>
+      </div>
     </header>
     <div class="scroll" id="preset-scroll">
       <div id="preset-list" class="preset-panel"></div>
@@ -887,7 +1297,15 @@
 
   <!-- ====== CENTRE: Map stage ====== -->
   <div class="stage" id="stage" style="grid-row:1/3" role="application" aria-label="Campaign map — scroll to zoom, drag to pan, click towns to inspect">
-    <svg id="map-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Campaign map">
+    <!-- War-room map table: topographic contour underlay (CSS only, outside canvas) -->
+    <div class="stage-topo-underlay" aria-hidden="true"></div>
+    <!-- Scanline + grain fx overlay (CSS only, outside canvas) -->
+    <div class="stage-fx-overlay" aria-hidden="true"></div>
+    <!-- Corner bracket reticle framing -->
+    <div class="stage-frame-brackets" aria-hidden="true"></div>
+    <span class="stage-bracket-tr" aria-hidden="true"></span>
+    <span class="stage-bracket-bl" aria-hidden="true"></span>
+    <svg id="map-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Campaign map" style="position:relative;z-index:1">
       <defs>
         <clipPath id="map-clip">
           <rect id="map-clip-rect" x="0" y="0" width="0" height="0"/>
@@ -936,7 +1354,7 @@
       </g>
     </svg>
 
-    <div class="map-overlay" role="toolbar" aria-label="Map controls">
+    <div class="map-overlay" role="toolbar" aria-label="Map controls" style="z-index:4">
       <button id="btn-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
       <button id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
       <button id="btn-zoom-fit" title="Fit map to view" aria-label="Fit map to view" style="font-size:11px">FIT</button>
@@ -959,13 +1377,16 @@
   <div class="panel right" id="panel-right" style="grid-row:1">
     <header>
       <div class="hdr-text">
+        <span class="hdr-ordinal">02 /</span>
         <h2>Inspector</h2>
         <div class="sub">click a WASP town to inspect</div>
       </div>
       <button class="panel-collapse-btn" id="btn-collapse-right" title="Collapse inspector panel" aria-label="Collapse inspector panel" aria-expanded="true">&#8250;</button>
     </header>
     <div class="scroll" id="inspector-body">
-      <div class="inspector-empty">No town selected.<br>Click any WASP town marker on the map to inspect its properties.</div>
+      <div class="inspector-empty">— SECTOR CLEAR —<br>
+        <span class="empty-state-hint">Click any WASP town marker on the map to inspect its properties.</span>
+      </div>
     </div>
   </div>
 
@@ -973,6 +1394,7 @@
   <div class="io-panel" id="io-panel" style="grid-row:2">
     <header>
       <div class="hdr-text">
+        <span class="hdr-ordinal">03 /</span>
         <h2>Mission I/O</h2>
         <div class="sub" id="io-sub">load or export mission.sqm</div>
       </div>
@@ -1037,9 +1459,46 @@
         <div class="gen-folder" id="gen-folder"></div>
       </div>
     </div>
+    <!-- Suite footer strip -->
+    <div class="suite-footer">
+      <span class="ver-chip">SECTOR PLANNER</span>
+      <a href="https://miksuu.com/tools" class="suite-link" title="Warfare Tools suite">Part of Warfare Tools &rarr; miksuu.com/tools</a>
+    </div>
   </div>
 
 </div><!-- /.app -->
+
+<!-- ====== Toast container ====== -->
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<!-- ====== Help overlay (? key / button) ====== -->
+<div id="help-overlay" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" aria-hidden="true">
+  <div class="help-modal">
+    <h2>SECTOR PLANNER</h2>
+    <div class="help-section">
+      <h3>Map Navigation</h3>
+      <div class="help-kbrow"><span class="kbdesc">Zoom in / out</span><kbd class="help-kbd">Scroll</kbd></div>
+      <div class="help-kbrow"><span class="kbdesc">Pan map</span><kbd class="help-kbd">Drag</kbd></div>
+      <div class="help-kbrow"><span class="kbdesc">Fit map to view</span><kbd class="help-kbd">F</kbd> <span style="color:#5a6470">or</span> <kbd class="help-kbd">G</kbd></div>
+      <div class="help-kbrow"><span class="kbdesc">Zoom In</span><kbd class="help-kbd">+</kbd></div>
+      <div class="help-kbrow"><span class="kbdesc">Zoom Out</span><kbd class="help-kbd">−</kbd></div>
+    </div>
+    <div class="help-section">
+      <h3>Editing</h3>
+      <div class="help-kbrow"><span class="kbdesc">Undo</span><kbd class="help-kbd">Ctrl+Z</kbd></div>
+      <div class="help-kbrow"><span class="kbdesc">Redo</span><kbd class="help-kbd">Ctrl+Y</kbd></div>
+      <div class="help-kbrow"><span class="kbdesc">Delete selected town</span><kbd class="help-kbd">Del</kbd></div>
+      <div class="help-kbrow"><span class="kbdesc">Exit current mode</span><kbd class="help-kbd">Esc</kbd></div>
+    </div>
+    <div class="help-section">
+      <h3>Modes</h3>
+      <div class="help-kbrow"><span class="kbdesc">Add Town mode (click map)</span><kbd class="help-kbd">Click</kbd> <span style="color:#5a6470">Add Town button</span></div>
+      <div class="help-kbrow"><span class="kbdesc">Paint ownership side</span><kbd class="help-kbd">Click</kbd> <span style="color:#5a6470">Paint Side button</span></div>
+      <div class="help-kbrow"><span class="kbdesc">Open this help</span><kbd class="help-kbd">?</kbd></div>
+    </div>
+    <button class="help-close" id="btn-help-close" aria-label="Close help overlay">CLOSE — ESC</button>
+  </div>
+</div>
 
 <script>
 // ============================================================
@@ -6402,6 +6861,138 @@ document.getElementById('btn-generate-mission').addEventListener('click', () => 
 
 // ============================================================
 // END CAMPAIGN SIMULATION
+// ============================================================
+
+// ============================================================
+// VISUAL OVERHAUL 2026-07-02: LED, TOAST, HELP OVERLAY
+// ============================================================
+
+// ---- Status LED ----
+// Reflects: loaded (green) / dirty/unsaved (orange pulse) / no data (off)
+function updateStatusLed() {
+  const led = document.getElementById('status-led');
+  if (!led) return;
+  const data = townsData && activeMap ? townsData[activeMap] : null;
+  // Check for any _edited or _added towns
+  const hasDirty = data && data.towns && data.towns.some(t => t._edited || t._added);
+  const hasData  = !!data;
+  led.classList.remove('dirty','error');
+  if (hasDirty) {
+    led.classList.add('dirty');
+    led.title = 'Unsaved edits';
+    led.setAttribute('aria-label','Status: unsaved edits');
+  } else if (hasData) {
+    led.title = 'Data loaded';
+    led.setAttribute('aria-label','Status: data loaded');
+  } else {
+    led.style.background='var(--line)';
+    led.title = 'No data';
+    led.setAttribute('aria-label','Status: no data');
+  }
+}
+
+// Patch points: call updateStatusLed after any edit-triggering function.
+// Use MutationObserver to track when updateIoButtons is called,
+// but simpler: just call it on a requestAnimationFrame tick whenever
+// we know state may have changed. Minimal-footprint approach:
+const _origUpdateIoButtons = typeof updateIoButtons === 'function' ? updateIoButtons : null;
+function _wrappedUpdateIoButtons() {
+  if (_origUpdateIoButtons) _origUpdateIoButtons();
+  updateStatusLed();
+}
+// Overwrite the global reference (safe since updateIoButtons is not exported)
+try { updateIoButtons = _wrappedUpdateIoButtons; } catch(e) {}
+
+// Also update on app load and map switch
+(function() {
+  // Small delay to let data load
+  setTimeout(updateStatusLed, 800);
+})();
+
+// ---- Toast notifications ----
+// Usage: showToast('MESSAGE') | showToast('MSG', 'warn') | showToast('MSG', 'err')
+function showToast(msg, type, durationMs) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast' + (type ? ' ' + type : '');
+  toast.textContent = msg;
+  container.appendChild(toast);
+  const dur = durationMs || 3000;
+  const dismiss = () => {
+    toast.classList.add('out');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    // Fallback remove in case animation doesn't fire (reduced-motion)
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, 400);
+  };
+  setTimeout(dismiss, dur);
+}
+window.showToast = showToast;
+
+// Patch copy-to-clipboard actions to show toast
+(function patchCopyToast() {
+  // The export-townset button already flashes the button text; we add a toast
+  const exportBtn = document.getElementById('btn-export-townset');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      setTimeout(() => showToast('COPIED ✓  SQF + JSON block'), 80);
+    });
+  }
+  // Change-list copy
+  const clBtn = document.getElementById('btn-export-changes');
+  if (clBtn) {
+    const origClClick = clBtn.onclick;
+    clBtn.addEventListener('click', () => {
+      setTimeout(() => {
+        if (!clBtn.disabled) showToast('COPIED ✓  Change list');
+      }, 80);
+    });
+  }
+})();
+
+// ---- Help overlay ----
+(function initHelpOverlay() {
+  const overlay  = document.getElementById('help-overlay');
+  const closeBtn = document.getElementById('btn-help-close');
+  const openBtn  = document.getElementById('btn-help');
+  if (!overlay) return;
+
+  function openHelp() {
+    overlay.classList.add('open');
+    overlay.removeAttribute('aria-hidden');
+    if (closeBtn) closeBtn.focus();
+  }
+  function closeHelp() {
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden','true');
+    if (openBtn) openBtn.focus();
+  }
+
+  if (openBtn) openBtn.addEventListener('click', openHelp);
+  if (closeBtn) closeBtn.addEventListener('click', closeHelp);
+
+  // Close on backdrop click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeHelp();
+  });
+
+  // Keyboard: ? to open, Esc to close (piggyback on existing keydown handler)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '?' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      // Only open if not in an input
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (overlay.classList.contains('open')) { closeHelp(); } else { openHelp(); }
+    }
+    if (e.key === 'Escape' && overlay.classList.contains('open')) {
+      e.stopPropagation(); // prevent the existing Esc handler from also firing
+      closeHelp();
+    }
+  }, true); // capture phase so we can stop propagation before the existing Esc handler
+})();
+
+// ============================================================
+// END VISUAL OVERHAUL
 // ============================================================
 
 // App bootstrap — must stay the LAST statement in this script so all
