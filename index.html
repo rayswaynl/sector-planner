@@ -6403,6 +6403,12 @@ document.getElementById('btn-generate-mission').addEventListener('click', () => 
 // ============================================================
 // END CAMPAIGN SIMULATION
 // ============================================================
+
+// App bootstrap — must stay the LAST statement in this script so all
+// wrappers (campaign-sim switchMap, ownership restore) are installed first.
+// Removed by accident in 3d669ff (sim feature overwrote the call): the app
+// was dead-on-load from then until 2026-07-02.
+init();
 </script>
 </body>
 </html>
