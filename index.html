@@ -515,6 +515,7 @@
   </div>
   <div class="tool"><b>Sector &amp; Town Planner</b> · <span id="bar-map-name">Chernarus</span></div>
   <div class="spacer"></div>
+  <a href="https://miksuu.com/tools" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8b939c;border:1px solid var(--line);border-radius:10px;padding:3px 9px;background:#0d1014;text-decoration:none;white-space:nowrap" title="Back to Miksuu Tools hub">&#8592; All Tools</a>
   <div class="chip">coords: <b>world-space metres</b> · Y-north up</div>
 </div>
 
@@ -638,6 +639,15 @@
         Ref locations = CfgWorlds (promote in Add mode)
       </div>
 
+      <div style="margin-top:8px;padding:6px 8px;background:rgba(14,17,20,.5);border:1px solid var(--line);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5a6470;line-height:1.7">
+        <span style="color:#8b939c;font-size:10px;text-transform:uppercase;letter-spacing:.4px">Keyboard</span><br>
+        <kbd style="background:var(--steel2);border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:9px;color:#c8d0d8">Del</kbd> Remove selected town&nbsp;&nbsp;
+        <kbd style="background:var(--steel2);border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:9px;color:#c8d0d8">Esc</kbd> Exit mode<br>
+        <kbd style="background:var(--steel2);border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:9px;color:#c8d0d8">Ctrl+Z</kbd> Undo&nbsp;&nbsp;
+        <kbd style="background:var(--steel2);border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:9px;color:#c8d0d8">Ctrl+Y</kbd> Redo<br>
+        <kbd style="background:var(--steel2);border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:9px;color:#c8d0d8">F</kbd> or <kbd style="background:var(--steel2);border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:9px;color:#c8d0d8">G</kbd> Fit map to view
+      </div>
+
       <div class="map-disclaimer">
         Map textures: Bohemia Interactive terrain renders.<br>
         Non-commercial fan tool — all rights reserved by BI.
@@ -688,6 +698,11 @@
             <div class="side-income" id="st-neutral-value">val 0</div>
           </div>
         </div>
+
+        <!-- Reset ownership -->
+        <button class="reset-btn" id="btn-reset-ownership" style="margin-top:6px" title="Clear all painted side ownership for the current map">
+          <div class="dot"></div>Reset ownership
+        </button>
 
         <!-- Income overlay -->
         <div class="toggle-row" style="margin-top:8px">
@@ -1691,6 +1706,7 @@ function renderTowns() {
       if (evt.button !== 0) return;
       evt.stopPropagation(); // prevent pan
       const sc = svgCoords(evt);
+      pushUndoSnapshot(); // capture state before any move
       dragState = {
         town: t, idx,
         grpEl: grp,
@@ -2151,6 +2167,7 @@ function deleteTown(idx) {
   if (!t) return;
   if (!confirm(`Delete town "${t.name}"? This cannot be undone.`)) return;
 
+  pushUndoSnapshot();
   data.towns.splice(idx, 1);
   selectedTown = null;
   selectedTownIdx = -1;
@@ -2853,10 +2870,12 @@ svg.addEventListener('click', (evt) => {
 // KEYBOARD: Delete key removes selected town
 // ============================================================
 window.addEventListener('keydown', (evt) => {
+  const tag = document.activeElement ? document.activeElement.tagName : '';
+  const inInput = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+
   if (evt.key === 'Delete' || evt.key === 'Backspace') {
     // Only act when not typing in an input/textarea
-    const tag = document.activeElement ? document.activeElement.tagName : '';
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (inInput) return;
     if (selectedTown !== null && selectedTownIdx >= 0) {
       deleteTown(selectedTownIdx);
     }
@@ -2866,6 +2885,22 @@ window.addEventListener('keydown', (evt) => {
     if (addTownMode) { setAddTownMode(false); }
     if (paintMode)   { setPaintMode(false); }
     if (routeEditMode) { setRouteEditMode(false); renderSupplyRoutes(); }
+  }
+  // Ctrl+Z undo / Ctrl+Y redo
+  if ((evt.ctrlKey || evt.metaKey) && evt.key === 'z' && !evt.shiftKey) {
+    if (inInput) return;
+    evt.preventDefault();
+    undoEdit();
+  }
+  if ((evt.ctrlKey || evt.metaKey) && (evt.key === 'y' || (evt.key === 'z' && evt.shiftKey))) {
+    if (inInput) return;
+    evt.preventDefault();
+    redoEdit();
+  }
+  // F / G → fit map to view
+  if ((evt.key === 'f' || evt.key === 'F' || evt.key === 'g' || evt.key === 'G') && !evt.ctrlKey && !evt.metaKey && !evt.altKey) {
+    if (inInput) return;
+    fitMap();
   }
 });
 
@@ -3059,8 +3094,14 @@ async function init() {
       }
     });
 
+    // Restore persisted ownership before first render
+    loadOwnership();
+
     // Wire strategy overlay controls (DOM already exists)
     wireStrategyControls();
+
+    // Wire reset-ownership button
+    document.getElementById('btn-reset-ownership').addEventListener('click', resetOwnership);
 
     requestAnimationFrame(() => {
       fitMap();
@@ -3681,6 +3722,134 @@ let paintSide      = 'west'; // currently selected paint-side
 const INCOME_COEF_DEFAULT  = 8;
 const CAPTURE_RATE_DEFAULT = 5;
 
+// ============================================================
+// UNDO / REDO STACK (shallow snapshots of town side + pos + value)
+// ============================================================
+const MAX_UNDO = 50;
+let _undoStack = []; // array of serialised snapshots
+let _redoStack = [];
+
+function _snapshotState() {
+  // Snapshot: per-map side/pos/value/name for all towns (minimal, fast)
+  const snap = {};
+  if (!townsData) return snap;
+  for (const mapKey of Object.keys(townsData)) {
+    const d = townsData[mapKey];
+    if (!d || !d.towns) continue;
+    snap[mapKey] = d.towns.map(t => ({
+      name: t.name, side: t.side, pos: [...t.pos],
+      value: t.value, startSV: t.startSV, maxSV: t.maxSV,
+      dubbing: t.dubbing, type: [...(t.type||[])],
+      _edited: t._edited, _added: t._added,
+      camps: JSON.parse(JSON.stringify(t.camps||[])),
+      defenses: JSON.parse(JSON.stringify(t.defenses||[])),
+    }));
+  }
+  return snap;
+}
+
+function _restoreSnapshot(snap) {
+  if (!townsData || !snap) return;
+  for (const mapKey of Object.keys(snap)) {
+    if (!townsData[mapKey]) continue;
+    const saved = snap[mapKey];
+    // Restore by matching array length; simplest safe restore
+    townsData[mapKey].towns = saved.map(s => ({
+      ...townsData[mapKey].towns.find(t => t.name === s.name) || {},
+      ...s,
+      pos: [...s.pos],
+      type: [...(s.type||[])],
+      camps: JSON.parse(JSON.stringify(s.camps||[])),
+      defenses: JSON.parse(JSON.stringify(s.defenses||[])),
+    }));
+  }
+}
+
+function pushUndoSnapshot() {
+  _undoStack.push(JSON.stringify(_snapshotState()));
+  if (_undoStack.length > MAX_UNDO) _undoStack.shift();
+  _redoStack = []; // new action clears redo
+}
+
+function undoEdit() {
+  if (_undoStack.length === 0) return;
+  _redoStack.push(JSON.stringify(_snapshotState()));
+  const snap = JSON.parse(_undoStack.pop());
+  _restoreSnapshot(snap);
+  _afterUndoRedo();
+}
+
+function redoEdit() {
+  if (_redoStack.length === 0) return;
+  _undoStack.push(JSON.stringify(_snapshotState()));
+  const snap = JSON.parse(_redoStack.pop());
+  _restoreSnapshot(snap);
+  _afterUndoRedo();
+}
+
+function _afterUndoRedo() {
+  selectedTown = null;
+  selectedTownIdx = -1;
+  document.getElementById('inspector-body').innerHTML =
+    '<div class="inspector-empty">Undo/redo applied. Click a town to inspect.</div>';
+  saveOwnership();
+  renderAll();
+  renderPresetPanel();
+  updateSideTotals();
+  if (typeof updateIoButtons === 'function') updateIoButtons();
+}
+
+// ============================================================
+// OWNERSHIP PERSISTENCE (localStorage per world)
+// ============================================================
+const OWNERSHIP_LS_KEY = 'sp-ownership-v1';
+
+function saveOwnership() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(OWNERSHIP_LS_KEY) || '{}');
+    if (!townsData) return;
+    for (const mapKey of Object.keys(townsData)) {
+      const d = townsData[mapKey];
+      if (!d || !d.towns) continue;
+      // Store side per town name
+      const sideMap = {};
+      d.towns.forEach(t => { if (t.side) sideMap[t.name] = t.side; });
+      saved[mapKey] = sideMap;
+    }
+    localStorage.setItem(OWNERSHIP_LS_KEY, JSON.stringify(saved));
+  } catch(e) {}
+}
+
+function loadOwnership() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(OWNERSHIP_LS_KEY) || '{}');
+    if (!townsData) return;
+    for (const mapKey of Object.keys(saved)) {
+      const d = townsData[mapKey];
+      if (!d || !d.towns) continue;
+      const sideMap = saved[mapKey];
+      d.towns.forEach(t => {
+        if (sideMap[t.name]) t.side = sideMap[t.name];
+      });
+    }
+  } catch(e) {}
+}
+
+function resetOwnership() {
+  if (!confirm('Clear all painted side ownership for the current map?')) return;
+  pushUndoSnapshot();
+  const data = getWaspData();
+  if (data) data.towns.forEach(t => { delete t.side; });
+  saveOwnership();
+  updateSideTotals();
+  renderTowns();
+  if (document.getElementById('show-frontline').checked) renderFrontlineOverlay();
+  if (document.getElementById('show-income').checked) renderIncomeOverlay();
+  if (document.getElementById('show-supply-routes') && document.getElementById('show-supply-routes').checked) {
+    if (typeof renderSupplyRoutes === 'function') renderSupplyRoutes();
+  }
+}
+
 // Side colour lookup (matches CSS vars)
 const SIDE_COLORS = {
   west:    '#5D82A3',
@@ -3714,8 +3883,10 @@ function setPaintMode(on) {
 
 // Paint a town's side on click (called from town mouseup when paintMode active)
 function paintTownSide(t, idx) {
+  pushUndoSnapshot();
   t.side = paintSide;
   markEdited(t);
+  saveOwnership();
   updateSideTotals();
   renderTowns();
   // If income overlay is on, refresh it
@@ -5737,6 +5908,27 @@ document.getElementById('btn-generate-mission').addEventListener('click', () => 
     if (!data || data.towns.length === 0) {
       alert('No towns on the current map. Add towns first.');
       return;
+    }
+
+    // Guard: warn when all towns are neutral AND no supply edges are set
+    const allNeutral = data.towns.every(t => !t.side || t.side === 'neutral');
+    const routeCount = (data._supplyEdges || []).length;
+    if (allNeutral && routeCount === 0) {
+      const proceed = confirm(
+        'No ownership has been painted and no supply routes exist.\n\n' +
+        'The simulation will produce flat/zero output — it needs at least some towns painted to WEST/EAST/GUER to run meaningfully.\n\n' +
+        'Tip: enable "Ownership colouring", use Paint side mode to assign towns, then re-run.\n\n' +
+        'Run anyway?'
+      );
+      if (!proceed) return;
+    } else if (allNeutral) {
+      const proceed = confirm(
+        'No ownership has been painted — all towns are Neutral.\n\n' +
+        'The sim chart will be flat with no side advancing.\n\n' +
+        'Tip: use Paint side mode to assign towns to WEST/EAST/GUER first.\n\n' +
+        'Run anyway?'
+      );
+      if (!proceed) return;
     }
 
     const ticks        = Math.max(1, Math.round(getSimParam('sim-ticks', 60)));
