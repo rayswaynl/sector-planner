@@ -5509,17 +5509,24 @@ function emitTownGroup(groupIdx, town) {
   const campIds  = [];
   const defIds   = [];
 
-  // Build the depot init
-  const types    = (town.type && town.type.length > 0) ? town.type : ['TinyTown1'];
+  // Build the depot init.
+  // Airfield depot-towns (town.airfield) use the live-mission pattern:
+  // dubbing "++", type ["PMCAirfield"], wfbe_is_airfield flag, and are
+  // excluded from WF_Logic totalTowns (see buildMissionSqm).
+  const isAirfieldTown = !!town.airfield;
+  const defaultType = isAirfieldTown ? ['PMCAirfield'] : ['TinyTown1'];
+  const types    = (town.type && town.type.length > 0) ? town.type : defaultType;
   const typeArg  = types.length === 1
     ? `\\"${sqmEscape(types[0])}\\"`
     : `[${types.map(t => `\\"${sqmEscape(t)}\\"`).join(',')}]`;
 
-  // Map planner fields:  startSV→income, maxSV→population, default captureRadius=300
-  const income   = town.startSV   || 0;
-  const pop      = town.maxSV     || 0;
-  const capR     = 300;
-  const dubbing  = town.dubbing   || '+';
+  // Init_Town.sqf signature: [this, name, dubbing, startSV, maxSV, value, type]
+  // (capture radius is hardcoded to 600 inside Init_Town.sqf — it is NOT an arg;
+  //  the 6th arg is wfbe_town_value, the AI-commander spearhead/income ranking)
+  const startSV  = town.startSV   || 0;
+  const maxSV    = town.maxSV     || 0;
+  const value    = town.value     || 0;
+  const dubbing  = town.dubbing   || (isAirfieldTown ? '++' : '+');
   const alias    = dubbing === '' ? '+' : dubbing;
 
   // Build camps + defenses ids first (we need them for depot synchronizations)
@@ -5534,8 +5541,11 @@ function emitTownGroup(groupIdx, town) {
 
   // Depot init (using SQM-escaped form — the whole string ends up in init="<value>")
   // The init value will be double-escaped when placed inside init=""
+  const airfieldTail = isAirfieldTown
+    ? `this setVariable [\\"wfbe_is_airfield\\",true,true];`
+    : '';
   const depotInitRaw =
-    `nullReturn=[this,\\"${sqmEscape(town.name)}\\",\\"${sqmEscape(alias)}\\",${income},${pop},${capR},${typeArg}] execVM \\"Common\\\\Init\\\\Init_Town.sqf\\";this enableSimulation false;`;
+    `nullReturn=[this,\\"${sqmEscape(town.name)}\\",\\"${sqmEscape(alias)}\\",${startSV},${maxSV},${value},${typeArg}] execVM \\"Common\\\\Init\\\\Init_Town.sqf\\";${airfieldTail}this enableSimulation false;`;
 
   const itemCount = 1 + camps.length + defenses.length;
   const lines = [];
@@ -5545,12 +5555,16 @@ function emitTownGroup(groupIdx, town) {
   lines.push(`\t\t\t{`);
   lines.push(`\t\t\t\titems=${itemCount};`);
 
-  // Item0 = depot
+  // Item0 = depot. text= is the editor VARIABLE name: Init_Town.sqf matches
+  // (str _town) against the Towns_Removed* preset lists, so it must be a
+  // valid SQF identifier — live missions use text="ChakChak" with display
+  // name "Chak Chak". The display name (init arg 2) keeps its spaces.
+  const townVarName = String(town.name).replace(/[^A-Za-z0-9_]/g, '') || `Town${depotId}`;
   lines.push(`\t\t\t\tclass Item0`);
   lines.push(`\t\t\t\t{`);
   lines.push(`\t\t\t\t\t${fmtPos3(town.pos[0], 0, town.pos[1])};`);
   lines.push(`\t\t\t\t\tvehicle="LocationLogicDepot";`);
-  lines.push(`\t\t\t\t\ttext="${sqmEscape(town.name)}";`);
+  lines.push(`\t\t\t\t\ttext="${sqmEscape(townVarName)}";`);
   lines.push(`\t\t\t\t\tinit="${depotInitRaw}";`);
   lines.push(`\t\t\t\t\tid=${depotId};`);
   lines.push(`\t\t\t\t\tsynchronizations[]={${allChildIds.join(',')}};`);
@@ -5923,6 +5937,79 @@ function buildMissionSqm({ world, size, westFaction, eastFaction, data }) {
     groupBlocks.push(lines.join('\n'));
   }
 
+  // ---- 6b. GUER (resistance) owner + playable slots ----
+  // Both live missions carry these; they sit AT the GuerTempRespawnMarker
+  // corner (the deadspawn ring walls them in at runtime). GUE_* classnames
+  // are used on every world — never worldName-branched.
+  {
+    const gAnchor3 = scalePos3d([15462.453, 273.3499, 15264.496], size);
+    const GUER_SLOTS = [
+      { cls: 'GUE_Soldier_Sab', off: [-2, 0],
+        init: 'removeAllWeapons this',
+        desc: 'Insurgent Engineer (Repair, Salvage, Camps restore)' },
+      { cls: 'GUE_Soldier_Sab', off: [2, 0],
+        init: 'removeAllWeapons this',
+        desc: 'Insurgent Engineer (Repair, Salvage, Camps restore)' },
+      { cls: 'GUE_Soldier_Sniper', off: [-2, 4],
+        init: 'removeAllWeapons this',
+        desc: 'Insurgent Sniper (Spot marks, Lockpick, Camps restore)' },
+      { cls: 'GUE_Soldier_Medic', off: [2, 4],
+        init: 'removeAllWeapons this; this setVariable [""task"",""medic""];',
+        desc: 'Insurgent Medic (Fast heal, Camps restore)' },
+    ];
+    const gOwnerId = nextId();
+    const gSlotIds = [];
+    for (const s of GUER_SLOTS) {
+      const id = nextId();
+      gSlotIds.push(id);
+      const gIdx = groupCount++;
+      const lines = [];
+      lines.push(`\t\tclass Item${gIdx}`);
+      lines.push(`\t\t{`);
+      lines.push(`\t\t\tside="GUER";`);
+      lines.push(`\t\t\tclass Vehicles`);
+      lines.push(`\t\t\t{`);
+      lines.push(`\t\t\t\titems=1;`);
+      lines.push(`\t\t\t\tclass Item0`);
+      lines.push(`\t\t\t\t{`);
+      lines.push(`\t\t\t\t\t${fmtPos3(gAnchor3[0] + s.off[0], 0, gAnchor3[2] + s.off[1])};`);
+      lines.push(`\t\t\t\t\tside="GUER";`);
+      lines.push(`\t\t\t\t\tvehicle="${sqmEscape(s.cls)}";`);
+      lines.push(`\t\t\t\t\tplayer="PLAY CDG";`);
+      lines.push(`\t\t\t\t\tleader=1;`);
+      lines.push(`\t\t\t\t\trank="CORPORAL";`);
+      lines.push(`\t\t\t\t\tskill=0.60000002;`);
+      lines.push(`\t\t\t\t\tinit="${s.init}";`);
+      lines.push(`\t\t\t\t\tdescription="${sqmEscape(s.desc)}";`);
+      lines.push(`\t\t\t\t\tid=${id};`);
+      lines.push(`\t\t\t\t\tsynchronizations[]={${gOwnerId}};`);
+      lines.push(`\t\t\t\t};`);
+      lines.push(`\t\t\t};`);
+      lines.push(`\t\t};`);
+      groupBlocks.push(lines.join('\n'));
+    }
+    {
+      const gIdx = groupCount++;
+      const lines = [];
+      lines.push(`\t\tclass Item${gIdx}`);
+      lines.push(`\t\t{`);
+      lines.push(`\t\t\tclass Vehicles`);
+      lines.push(`\t\t\t{`);
+      lines.push(`\t\t\t\titems=1;`);
+      lines.push(`\t\t\t\tclass Item0`);
+      lines.push(`\t\t\t\t{`);
+      lines.push(`\t\t\t\t\t${fmtPos3(gAnchor3[0], 0, gAnchor3[2])};`);
+      lines.push(`\t\t\t\t\tvehicle="LocationLogicOwnerResistance";`);
+      lines.push(`\t\t\t\t\ttext="WFBE_L_GUE";`);
+      lines.push(`\t\t\t\t\tid=${gOwnerId};`);
+      lines.push(`\t\t\t\t\tsynchronizations[]={${gSlotIds.join(',')}};`);
+      lines.push(`\t\t\t\t};`);
+      lines.push(`\t\t\t};`);
+      lines.push(`\t\t};`);
+      groupBlocks.push(lines.join('\n'));
+    }
+  }
+
   // ---- 7. WF_Logic ----
   {
     // Build Towns_Removed* arrays from presets
@@ -5941,8 +6028,11 @@ function buildMissionSqm({ world, size, westFaction, eastFaction, data }) {
       }
     }
 
+    // Airfield depot-towns register via Init_Town.sqf but do NOT count toward
+    // totalTowns (live missions: Takistan totalTowns=31 with 33 depots).
+    const regularTownCount = towns.filter(t => !t.airfield).length;
     const wfInitRaw =
-      `this setVariable [\\"totalTowns\\",${towns.length}];` +
+      `this setVariable [\\"totalTowns\\",${regularTownCount}];` +
       removedLines +
       `this enableSimulation false; nullReturn = [this] ExecVM \\"Common\\\\Init\\\\Init_TownMode.sqf\\"`;
 
@@ -6303,8 +6393,9 @@ document.getElementById('btn-generate-mission').addEventListener('click', () => 
       issues.push(`addOns block ${bi + 1} missing world "${activeMap}"`);
     }
   }
-  if (report.totalTowns !== data.towns.length) {
-    issues.push(`totalTowns=${report.totalTowns} but ${data.towns.length} towns`);
+  const expectedTotalTowns = data.towns.filter(t => !t.airfield).length;
+  if (report.totalTowns !== expectedTotalTowns) {
+    issues.push(`totalTowns=${report.totalTowns} but ${expectedTotalTowns} non-airfield towns`);
   }
   if (report.depotCount !== data.towns.length) {
     issues.push(`Depot count ${report.depotCount} ≠ town count ${data.towns.length}`);
