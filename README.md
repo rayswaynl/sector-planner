@@ -22,6 +22,18 @@ Edit the whole WASP campaign on a map. Every capturable **town** is a draggable 
 - **Paste your `mission.sqm`** → the planner maps your exact towns → edit on the map → **download a modified `mission.sqm`** with your changes applied **in place** (a no-op edit returns the file byte-for-byte identical — only the towns you actually changed are touched).
 - Or, in seeded mode, **export a change-list** (the new `position[]` / `init=` lines per edited town) to paste yourself.
 
+## Headless CLI (build missions by prompting)
+
+`tools/gen_mission.mjs` (Node ≥ 16, zero deps) runs the **same** generator as the browser Generate button — it extracts the assembler section out of `index.html` and evaluates it in a vm sandbox, so CLI and web output can never drift.
+
+```
+node tools/gen_mission.mjs --map zargabad --west US --east TKA --campaign my-campaign.json --out ./build
+node tools/gen_mission.mjs --map zargabad --auto-towns --json     # promote CfgWorlds locations to towns
+node tools/gen_mission.mjs --map chernarus --out ./build          # use the shipped seed campaign
+```
+
+`--campaign` takes a JSON file shaped like a `seed-towns.json` map entry (`{towns, spawns, airports, presets}`); `--json` prints a machine-readable summary (folder name, counts, structural issues); structural validation runs by default and any issue exits 1. Tests: `node tools/test_gen_mission.mjs`.
+
 ## Unique core
 
 Where WDDM edits meter-scale footprints and Loadout Lab edits a unit's kit, this tool edits the **entire campaign at strategic zoom** — a draggable map, not a form or a palette.
